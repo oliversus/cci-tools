@@ -11,6 +11,7 @@ import sys
 import math
 import numpy.ma as ma
 from scipy import stats
+from osgeo._gdal import GDAL_GCP_GCPLine_get
 
 figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
@@ -18,6 +19,8 @@ delLat = "0.1"
 delLon = "0.1"
 N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
 MYDPrimaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_primary.nc"
+N18SecondaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_secondary.nc"
+MYDSecondaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_secondary.nc"
 
 # NOAA18 paths and data
 print "Reading NOAA18 data"
@@ -35,13 +38,20 @@ secMYD = CCI(pathL2SecMYD)
 
 # N18 paths and data, RESAMPLED
 print "Reading resampled N18 data"
-pathL2N18Resampled = mainL2 + N18PrimaryResampledName
-N18Resampled = CCI(pathL2N18Resampled)
+pathL2N18PrimaryResampled = mainL2 + N18PrimaryResampledName
+N18PrimaryResampled = CCI(pathL2N18PrimaryResampled)
+pathL2N18SecondaryResampled = mainL2 + N18SecondaryResampledName
+N18SecondaryResampled = CCI(pathL2N18SecondaryResampled)
 
 # MODIS AQUA paths and data, RESAMPLED
 print "Reading resampled MODIS AQUA data"
-pathL2MYDResampled = mainL2 + MYDPrimaryResampledName
-MYDResampled = CCI(pathL2MYDResampled)
+pathL2MYDPrimaryResampled = mainL2 + MYDPrimaryResampledName
+MYDPrimaryResampled = CCI(pathL2MYDPrimaryResampled)
+pathL2MYDSecondaryResampled = mainL2 + MYDSecondaryResampledName
+MYDSecondaryResampled = CCI(pathL2MYDSecondaryResampled)
+
+#ds = gdal.Open(pathL2MYDSecondaryResampled).ReadAsArray()
+
 
 # subset borders in lat/lon
 centrePoint = [64.5, -102.5] #[71 ,  -80 ] 
@@ -63,13 +73,15 @@ boundingBox = [-134, -76, 52, 74]
 MYDSlice = priMYD.getAllVariables(doSlice = True, boundingBox = boundingBox)
 secMYD.getAllVariables(doSlice = True, boundingBox = boundingBox, primary = False, boxSlice = MYDSlice)
 print "Getting all variables: N18 resampled"
-N18Resampled.getAllVariables()
+N18PrimaryResampled.getAllVariables()
+N18SecondaryResampled.getAllVariables()
 print "Getting all variables: MODIS resampled"
-MYDResampled.getAllVariables()
+MYDPrimaryResampled.getAllVariables()
+MYDSecondaryResampled.getAllVariables()
 
 # mask all resampled pixels with cc_total < 1 to exclude fractional cloud coverage
-N18ResampledCloudMask = ma.masked_less(N18Resampled.cc_total, 1.).mask
-MYDResampledCloudMask = ma.masked_less(MYDResampled.cc_total, 1.).mask
+N18ResampledCloudMask = ma.masked_less(N18PrimaryResampled.cc_total, 1.).mask
+MYDResampledCloudMask = ma.masked_less(MYDPrimaryResampled.cc_total, 1.).mask
 N18MYDMaskCombined = N18ResampledCloudMask + MYDResampledCloudMask
 
 #################################################################################################
@@ -77,8 +89,8 @@ N18MYDMaskCombined = N18ResampledCloudMask + MYDResampledCloudMask
 # 1) compare CCI products from N18, MYD, and AATSR
 
     # a) RGB, ideally highly resolved MODIS with 0.6, 0.8, and 1.6 (1.6 has missing scan lines though)
-colourTuple = buildRGB(priMYD, secMYD)
-plotRGB(colourTuple, priMYD.lat, priMYD.lon, priMYD.cth, 
+colourTuple = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled)
+plotRGB(colourTuple, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.albedo_in_channel_no_1, 
         centrePoint[0], centrePoint[1])
 
 

@@ -13,7 +13,7 @@ import numpy.ma as ma
 
 # main path to input files
 mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-primary = True
+primary = False
 if primary:
     suffix = "_primary"
 else:
@@ -24,10 +24,10 @@ outNameMYD = "MYD_Resampled_2008-07-22-1915_"
 # targetGrid:
 minLat = 52.0
 maxLat = 74.0
-delLat = 0.05
+delLat = 0.5
 minLon = -137.0
 maxLon = -76.0
-delLon = 0.05
+delLon = 0.5
 
 targetGrid = cciGrid(minLat, minLon, maxLat, maxLon, delLat = delLat, delLon = delLon)
 targetGrid.buildGrid()

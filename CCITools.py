@@ -73,60 +73,60 @@ def writeCCI(path, data, targetGrid, primary, NOAA = True):
     else:
 
         if NOAA:
-            albedo1 = ncOut.createVariable("albedo_ch1","f8",("along_track", "across_track"))
+            albedo1 = ncOut.createVariable("albedo_in_channel_no_1","f8",("along_track", "across_track"))
             albedo1[:,:] = data[:,:,0]
             
-            albedo2 = ncOut.createVariable("albedo_ch2","f8",("along_track", "across_track"))
+            albedo2 = ncOut.createVariable("albedo_in_channel_no_2","f8",("along_track", "across_track"))
             albedo2[:,:] = data[:,:,1]
 
-            albedo3 = ncOut.createVariable("albedo_ch3","f8",("along_track", "across_track"))
+            albedo3 = ncOut.createVariable("albedo_in_channel_no_3","f8",("along_track", "across_track"))
             albedo3[:,:] = data[:,:,2]
 
-            reflectance1 = ncOut.createVariable("reflectance_ch1","f8",("along_track", "across_track"))
+            reflectance1 = ncOut.createVariable("reflectance_in_channel_no_1","f8",("along_track", "across_track"))
             reflectance1[:,:] = data[:,:,3]
 
-            reflectance2 = ncOut.createVariable("reflectance_ch2","f8",("along_track", "across_track"))
+            reflectance2 = ncOut.createVariable("reflectance_in_channel_no_2","f8",("along_track", "across_track"))
             reflectance2[:,:] = data[:,:,4]
 
-            reflectance3 = ncOut.createVariable("reflectance_ch3","f8",("along_track", "across_track"))
+            reflectance3 = ncOut.createVariable("reflectance_in_channel_no_3","f8",("along_track", "across_track"))
             reflectance3[:,:] = data[:,:,5]
 
-            bt4 = ncOut.createVariable("bt_ch4","f8",("along_track", "across_track"))
+            bt4 = ncOut.createVariable("brightness_temperature_in_channel_no_4","f8",("along_track", "across_track"))
             bt4[:,:] = data[:,:,6]
 
-            bt5 = ncOut.createVariable("bt_ch5","f8",("along_track", "across_track"))
+            bt5 = ncOut.createVariable("brightness_temperature_in_channel_no_5","f8",("along_track", "across_track"))
             bt5[:,:] = data[:,:,7]
         
-            bt6 = ncOut.createVariable("bt_ch6","f8",("along_track", "across_track"))
+            bt6 = ncOut.createVariable("brightness_temperature_in_channel_no_6","f8",("along_track", "across_track"))
             bt6[:,:] = data[:,:,8]
 
         else:
 
-            albedo1 = ncOut.createVariable("albedo_ch1","f8",("along_track", "across_track"))
+            albedo1 = ncOut.createVariable("albedo_in_channel_no_1","f8",("along_track", "across_track"))
             albedo1[:,:] = data[:,:,0]
             
-            albedo2 = ncOut.createVariable("albedo_ch2","f8",("along_track", "across_track"))
+            albedo2 = ncOut.createVariable("albedo_in_channel_no_2","f8",("along_track", "across_track"))
             albedo2[:,:] = data[:,:,1]
 
-            albedo6 = ncOut.createVariable("albedo_ch6","f8",("along_track", "across_track"))
+            albedo6 = ncOut.createVariable("albedo_in_channel_no_6","f8",("along_track", "across_track"))
             albedo6[:,:] = data[:,:,2]
 
-            reflectance1 = ncOut.createVariable("reflectance_ch1","f8",("along_track", "across_track"))
+            reflectance1 = ncOut.createVariable("reflectance_in_channel_no_1","f8",("along_track", "across_track"))
             reflectance1[:,:] = data[:,:,3]
 
-            reflectance2 = ncOut.createVariable("reflectance_ch2","f8",("along_track", "across_track"))
+            reflectance2 = ncOut.createVariable("reflectance_in_channel_no_2","f8",("along_track", "across_track"))
             reflectance2[:,:] = data[:,:,4]
 
-            reflectance6 = ncOut.createVariable("reflectance_ch6","f8",("along_track", "across_track"))
+            reflectance6 = ncOut.createVariable("reflectance_in_channel_no_6","f8",("along_track", "across_track"))
             reflectance6[:,:] = data[:,:,5]
 
-            bt20 = ncOut.createVariable("bt_ch20","f8",("along_track", "across_track"))
+            bt20 = ncOut.createVariable("brightness_temperature_in_channel_no_20","f8",("along_track", "across_track"))
             bt20[:,:] = data[:,:,6]
 
-            bt31 = ncOut.createVariable("bt_ch31","f8",("along_track", "across_track"))
+            bt31 = ncOut.createVariable("brightness_temperature_in_channel_no_31","f8",("along_track", "across_track"))
             bt31[:,:] = data[:,:,7]
         
-            bt32 = ncOut.createVariable("bt_ch32","f8",("along_track", "across_track"))
+            bt32 = ncOut.createVariable("brightness_temperature_in_channel_no_32","f8",("along_track", "across_track"))
             bt32[:,:] = data[:,:,8]
 
     ncOut.close()
@@ -216,15 +216,20 @@ def plotRGB(colourTuple, lat, lon, dummy,
     # define figure size
     fig1 = plt.figure(figsize = (10, 10))
     # define # subplots
-    ax = fig1.add_subplot(111)
+    # ax = fig1.add_subplot(111)
 
     # draw coasts and fill continents
     map.drawcoastlines(linewidth = 0.5)
     fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
-
+    print lon.shape
+    print lat.shape
+    print dummy.shape
     # plot the data, adding a colorbar
-    map.pcolormesh(lon.flatten(), lat.flatten(), dummy, color = colourTuple, latlon = True, linewidth = 0.05, clip_on = True)
-    plt.savefig(figuresDir + "RGB.png", bbox_inches='tight')
+    
+    x = colourTuple.reshape()
+    
+    map.pcolormesh(lon, lat, dummy, color = colourTuple, latlon = True, linewidth = 0.05, clip_on = True)
+    plt.savefig("/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/RGB.png", bbox_inches='tight')
 
     # plot RGB
     # red   = ch006.flatten()
@@ -366,7 +371,7 @@ def buildRGB(primaryData, secondaryData):
     # get variables if attributes not available
     if not hasattr(primaryData, "solar_zenith_view_no1"):
         primaryData.getAllVariables()
-    if not hasattr(secondaryData, "brightness_temperature_in_channel_no_31"):
+    if not hasattr(secondaryData, "albedo_in_channel_no_1"):
         secondaryData.getAllVariables()
 
     # define new numpy cosine function that accepts degrees as argument
@@ -437,9 +442,9 @@ def buildRGB(primaryData, secondaryData):
     # return colour tuple
     # np.fliplr
     out = np.array(tuple(np.array([red2, green2, blue2]).transpose((2,1,0)).tolist()))
-    out = np.rot90(np.flipud(out))
+    #out = np.rot90(np.flipud(out))
 #     imgplot = plt.imshow(np.rot90(np.flipud(out)))
 #     plt.show()
-    out = out.reshape(out.shape[0] * out.shape[1], out.shape[2])
+    out = out.reshape(out.shape[0] * out.shape[1], out.shape[2], order = 'F')
     #out = tuple(np.array([red2.flatten(), green2.flatten(), blue2.flatten()]).transpose().tolist())
     return out #np.flipud(np.fliplr(out))
