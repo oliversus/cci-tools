@@ -200,45 +200,6 @@ def minMax(a):
     except:
         return a.min(), a.max()
 
-def plotRGB(colourTuple, lat, lon, dummy,
-            lat_0, lon_0,
-            width = 5000000, height = 5000000,
-            res = 'l',
-            llcrnrlat = 50, urcrnrlat = 80, llcrnrlon = -180, urcrnrlon = -150,
-            cmin = None, cmax = None,
-            mask = None):    
-
-    # define map projection
-    map = Basemap(width = width, height = height,
-                  resolution='l', projection = 'stere',
-                  lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
-
-    # define figure size
-    fig1 = plt.figure(figsize = (10, 10))
-    # define # subplots
-    # ax = fig1.add_subplot(111)
-
-    # draw coasts and fill continents
-    map.drawcoastlines(linewidth = 0.5)
-    fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
-    print lon.shape
-    print lat.shape
-    print dummy.shape
-    # plot the data, adding a colorbar
-    
-    x = colourTuple.reshape()
-    
-    map.pcolormesh(lon, lat, dummy, color = colourTuple, latlon = True, linewidth = 0.05, clip_on = True)
-    plt.savefig("/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/RGB.png", bbox_inches='tight')
-
-    # plot RGB
-    # red   = ch006.flatten()
-    # green = ch008.flatten()
-    # blue  = ch037Diff.flatten()
-    # colorTuple = tuple(np.array([red, green, blue]).transpose().tolist())
-    # map.pcolormesh(lon, lat, ch006, color = colorTuple, clip_on = True, latlon = True)
-
-
 def plotVariable(CCIpri, CCIsec,
                  lat_0, lon_0,
                  variable = "cot", input = None, plotInput = False,
@@ -410,6 +371,7 @@ def buildRGB(primaryData, secondaryData):
     red2   = np.zeros(red.shape)
     green2 = np.zeros(red.shape)
     blue2  = np.zeros(red.shape)
+    alpha  = np.ones(red.shape)
     # histogram for rescaling lightness - legacy from IDL code
     cumHist = np.array([0.00000, 0.141667, 0.245500, 0.311333, 0.381733, 0.446767, 0.507567, 
                         0.563467, 0.615867, 0.665867, 0.715867, 0.765067, 0.817533, 0.868433,
@@ -422,6 +384,8 @@ def buildRGB(primaryData, secondaryData):
             h = (h + 24. / 360) % 1.
             l = np.interp(l*16, range(17), cumHist)
             red2[i, j], green2[i, j], blue2[i, j] = colorsys.hls_to_rgb(h, l, s**1.1)
+            if np.isnan(red2[i, j]) or np.isnan(green2[i, j]) or np.isnan(blue2[i, j]):
+                alpha[i, j] = 0. 
     elapsed_time = round(time.time() - start_time, 1)
     print "...done after " + str(elapsed_time) + " seconds"
 
@@ -439,12 +403,51 @@ def buildRGB(primaryData, secondaryData):
     green2 /= np.nanmax(green2)
     blue2 /= np.nanmax(blue2)
 
-    # return colour tuple
-    # np.fliplr
-    out = np.array(tuple(np.array([red2, green2, blue2]).transpose((2,1,0)).tolist()))
-    #out = np.rot90(np.flipud(out))
-#     imgplot = plt.imshow(np.rot90(np.flipud(out)))
-#     plt.show()
-    out = out.reshape(out.shape[0] * out.shape[1], out.shape[2], order = 'F')
-    #out = tuple(np.array([red2.flatten(), green2.flatten(), blue2.flatten()]).transpose().tolist())
-    return out #np.flipud(np.fliplr(out))
+    # fix for matplotlib bug: exclude last row and column so that colourTuple agrees with coordinates
+    red2   = red2  [0:-1, 0:-1]
+    green2 = green2[0:-1, 0:-1]
+    blue2  = blue2 [0:-1, 0:-1]
+    alpha  = alpha [0:-1, 0:-1]
+
+    # return colour array
+    out = np.array([red2.flatten(), green2.flatten(), blue2.flatten(), alpha.flatten()]).transpose()
+    return out
+
+def plotRGB(colourTuple, lat, lon, dummy,
+            lat_0, lon_0,
+            width = 5000000, height = 5000000,
+            res = 'l',
+            llcrnrlat = 50, urcrnrlat = 80, llcrnrlon = -180, urcrnrlon = -150,
+            cmin = None, cmax = None,
+            mask = None):    
+
+    # define map projection
+    map = Basemap(width = width, height = height,
+                  resolution='l', projection = 'stere',
+                  lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
+
+    # define figure size
+    fig1 = plt.figure(figsize = (10, 10))
+    # define # subplots
+    ax = fig1.add_subplot(111)
+
+    # draw coasts and fill continents
+    map.drawcoastlines(linewidth = 0.5)
+    fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
+    
+    # draw grid lines
+    gridSpacing = 5.
+    map.drawparallels(
+        np.arange(llcrnrlat, urcrnrlat, gridSpacing),
+        color = 'black', linewidth = 0.5,
+        labels=[True, False, False, False])
+    map.drawmeridians(
+        np.arange(-180, 0, 10.),
+        color = '0.25', linewidth = 0.5,
+        labels=[False, False, False, True])
+        
+    # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
+    mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple, latlon = True, linewidth = 0.05, clip_on = True)
+    mesh.set_array(None)
+    plt.savefig("/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/RGB.png", bbox_inches='tight')
+

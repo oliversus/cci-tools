@@ -15,8 +15,8 @@ from osgeo._gdal import GDAL_GCP_GCPLine_get
 
 figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-delLat = "0.1"
-delLon = "0.1"
+delLat = "0.05"
+delLon = "0.05"
 N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
 MYDPrimaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_primary.nc"
 N18SecondaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_secondary.nc"
@@ -89,14 +89,12 @@ N18MYDMaskCombined = N18ResampledCloudMask + MYDResampledCloudMask
 # 1) compare CCI products from N18, MYD, and AATSR
 
     # a) RGB, ideally highly resolved MODIS with 0.6, 0.8, and 1.6 (1.6 has missing scan lines though)
-colourTuple = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled)
-plotRGB(colourTuple, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.albedo_in_channel_no_1, 
-        centrePoint[0], centrePoint[1])
-
-
-# plt.savefig(figuresDir + "RGB.png", bbox_inches='tight')
-
-sys.exit()
+if False:
+    print "RGB: started."
+    colourTuple = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled)
+    plotRGB(colourTuple, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.albedo_in_channel_no_1, 
+            centrePoint[0], centrePoint[1])
+    print "RGB: done."
 
     # b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
 
