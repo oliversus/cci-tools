@@ -471,7 +471,7 @@ def plotRGBMulti(figureName, colourTuple,
             cmin = None, cmax = None,
             mask = None):    
 
-    nPlots = colourTuple.shape
+    nPlots = colourTuple.shape[2]
 
     # define map projection
     map = Basemap(width = width, height = height,
@@ -479,54 +479,32 @@ def plotRGBMulti(figureName, colourTuple,
                   lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
 
     # define figure size
-    fig1 = plt.figure(figsize = (20, 10))
-
-    # FIGURE 1
-
-    # define # subplots
-    ax = fig1.add_subplot(121)
-
-    # draw coasts and fill continents
-    map.drawcoastlines(linewidth = 0.5)
-    fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
-    
-    # draw grid lines
-    gridSpacing = 5.
-    map.drawparallels(
-        np.arange(llcrnrlat, urcrnrlat, gridSpacing),
-        color = 'black', linewidth = 0.5,
-        labels=[True, False, False, False])
-    map.drawmeridians(
-        np.arange(-180, 0, 10.),
-        color = '0.25', linewidth = 0.5,
-        labels=[False, False, False, True])
-        
-    # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
-    mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
-    mesh.set_array(None)
-    
-    # FIGURE 2
+    figWidth = 10 * nPlots
+    fig1 = plt.figure(figsize = (figWidth, 10))
 
     # define # subplots
-    ax = fig1.add_subplot(122)
+    nRows = 1
+    nCols = nPlots
+    for i in range(nPlots):
+        ax = fig1.add_subplot(nRows, nCols, i + 1)
 
-    # draw coasts and fill continents
-    map.drawcoastlines(linewidth = 0.5)
-    fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
+        # draw coasts and fill continents
+        map.drawcoastlines(linewidth = 0.5)
+        fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
     
-    # draw grid lines
-    gridSpacing = 5.
-    map.drawparallels(
-        np.arange(llcrnrlat, urcrnrlat, gridSpacing),
-        color = 'black', linewidth = 0.5,
-        labels=[True, False, False, False])
-    map.drawmeridians(
-        np.arange(-180, 0, 10.),
-        color = '0.25', linewidth = 0.5,
-        labels=[False, False, False, True])
+        # draw grid lines
+        gridSpacing = 5.
+        map.drawparallels(
+            np.arange(llcrnrlat, urcrnrlat, gridSpacing),
+            color = 'black', linewidth = 0.5,
+            labels=[True, False, False, False])
+        map.drawmeridians(
+            np.arange(-180, 0, 10.),
+            color = '0.25', linewidth = 0.5,
+            labels=[False, False, False, True])
         
-    # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
-    mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,1], latlon = True, linewidth = 0.05, clip_on = True)
-    mesh.set_array(None)
-    
+        # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
+        mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,i], latlon = True, linewidth = 0.05, clip_on = True)
+        mesh.set_array(None)
+        
     plt.savefig(figureName, bbox_inches='tight')

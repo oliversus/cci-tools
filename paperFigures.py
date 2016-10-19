@@ -14,8 +14,10 @@ from scipy import stats
 
 figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-delLat = "0.5"
-delLon = "0.5"
+delLat = "0.05"
+delLon = "0.05"
+delLatStr = str(delLat); delLatStr = delLatStr.replace(".", "")
+delLonStr = str(delLon); delLonStr = delLonStr.replace(".", "")
 N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
 MYDPrimaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_primary.nc"
 N18SecondaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_secondary.nc"
@@ -89,20 +91,19 @@ if True:
     print "RGB: started."
     platform = "MYD"
     colourTupleMYD = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled, platform)
-    RGBName = figuresDir + "RGB_" + platform + ".png"
+    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
     plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.albedo_in_channel_no_1, 
             centrePoint[0], centrePoint[1])
     platform = "N18"
     colourTupleN18 = buildRGB(N18PrimaryResampled, N18SecondaryResampled, platform)
-    RGBName = figuresDir + "RGB_" + platform + ".png"
+    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
     plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.albedo_in_channel_no_1, 
             centrePoint[0], centrePoint[1])
     print "RGB: done."
-    colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis]), axis=2)
-    RGBName = figuresDir + "RGB_multi.png" 
+    colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleMYD[..., np.newaxis]), axis=2)
+    RGBName = figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + ".png"
     plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.albedo_in_channel_no_1, 
-            centrePoint[0], centrePoint[1])
-    
+            centrePoint[0], centrePoint[1])    
     
     sys.exit()
 
