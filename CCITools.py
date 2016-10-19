@@ -327,24 +327,35 @@ def plotCCI(priN18, priMYD, boundingBox, centrePoint, variable, platform,
                  mask = mask)
     plt.draw()
 
-def buildRGB(primaryData, secondaryData):
+def buildRGB(primaryData, secondaryData, platform):
 
+    # set channel numbers according to input platform
+    if platform is "MYD":
+        ch4 = "brightness_temperature_in_channel_no_20"
+        ch5 = "brightness_temperature_in_channel_no_31"
+    elif platform is "N18":
+        ch4 = "brightness_temperature_in_channel_no_4"
+        ch5 = "brightness_temperature_in_channel_no_5"
+    else:
+        print "Error: select one of [MYD, N18] as input platform."
+        sys.exit()
+        
     # get variables if attributes not available
     if not hasattr(primaryData, "solar_zenith_view_no1"):
         primaryData.getAllVariables()
     if not hasattr(secondaryData, "albedo_in_channel_no_1"):
-        secondaryData.getAllVariables()
+        secondaryData.getAllVariables()        
 
     # define new numpy cosine function that accepts degrees as argument
     np.cosd = lambda x : np.cos( np.deg2rad(x) )
         
     # get data and mask negative values
     sunzen = primaryData.solar_zenith_view_no1
-    ir = secondaryData.brightness_temperature_in_channel_no_31
+    ir = getattr(secondaryData, ch5)  
     ir = ir.view(ma.MaskedArray) # explicitly add mask to variable, as no missing data were found
-    ir.mask = ma.masked_less(secondaryData.brightness_temperature_in_channel_no_31, 0.).mask
-    red  = secondaryData.brightness_temperature_in_channel_no_20
-    red.mask = ma.masked_less(secondaryData.brightness_temperature_in_channel_no_20, 0.).mask
+    ir.mask = ma.masked_less(getattr(secondaryData, ch5), 0.).mask
+    red  = getattr(secondaryData, ch4)
+    red.mask = ma.masked_less(getattr(secondaryData, ch4), 0.).mask
     # extract solar component from mixed 3.7 um channel
     red = ((red - ir) / np.cosd(sunzen) + 20. + ((ir - 302.).clip(min = 0.) / 30. * 40.)).clip(min = 0.)
     green = secondaryData.reflectance_in_channel_no_2
@@ -413,11 +424,11 @@ def buildRGB(primaryData, secondaryData):
     out = np.array([red2.flatten(), green2.flatten(), blue2.flatten(), alpha.flatten()]).transpose()
     return out
 
-def plotRGB(colourTuple, lat, lon, dummy,
+def plotRGB(figureName, colourTuple, lat, lon, dummy,
             lat_0, lon_0,
             width = 5000000, height = 5000000,
             res = 'l',
-            llcrnrlat = 50, urcrnrlat = 80, llcrnrlon = -180, urcrnrlon = -150,
+            llcrnrlat = 45, urcrnrlat = 80, llcrnrlon = -180, urcrnrlon = -150,
             cmin = None, cmax = None,
             mask = None):    
 
@@ -449,5 +460,73 @@ def plotRGB(colourTuple, lat, lon, dummy,
     # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
     mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple, latlon = True, linewidth = 0.05, clip_on = True)
     mesh.set_array(None)
-    plt.savefig("/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/RGB.png", bbox_inches='tight')
+    plt.savefig(figureName, bbox_inches='tight')
 
+def plotRGBMulti(figureName, colourTuple,
+            lat, lon, dummy,
+            lat_0, lon_0,
+            width = 5000000, height = 5000000,
+            res = 'l',
+            llcrnrlat = 45, urcrnrlat = 80, llcrnrlon = -180, urcrnrlon = -150,
+            cmin = None, cmax = None,
+            mask = None):    
+
+    nPlots = colourTuple.shape
+
+    # define map projection
+    map = Basemap(width = width, height = height,
+                  resolution='l', projection = 'stere',
+                  lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
+
+    # define figure size
+    fig1 = plt.figure(figsize = (20, 10))
+
+    # FIGURE 1
+
+    # define # subplots
+    ax = fig1.add_subplot(121)
+
+    # draw coasts and fill continents
+    map.drawcoastlines(linewidth = 0.5)
+    fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
+    
+    # draw grid lines
+    gridSpacing = 5.
+    map.drawparallels(
+        np.arange(llcrnrlat, urcrnrlat, gridSpacing),
+        color = 'black', linewidth = 0.5,
+        labels=[True, False, False, False])
+    map.drawmeridians(
+        np.arange(-180, 0, 10.),
+        color = '0.25', linewidth = 0.5,
+        labels=[False, False, False, True])
+        
+    # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
+    mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
+    mesh.set_array(None)
+    
+    # FIGURE 2
+
+    # define # subplots
+    ax = fig1.add_subplot(122)
+
+    # draw coasts and fill continents
+    map.drawcoastlines(linewidth = 0.5)
+    fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
+    
+    # draw grid lines
+    gridSpacing = 5.
+    map.drawparallels(
+        np.arange(llcrnrlat, urcrnrlat, gridSpacing),
+        color = 'black', linewidth = 0.5,
+        labels=[True, False, False, False])
+    map.drawmeridians(
+        np.arange(-180, 0, 10.),
+        color = '0.25', linewidth = 0.5,
+        labels=[False, False, False, True])
+        
+    # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
+    mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,1], latlon = True, linewidth = 0.05, clip_on = True)
+    mesh.set_array(None)
+    
+    plt.savefig(figureName, bbox_inches='tight')

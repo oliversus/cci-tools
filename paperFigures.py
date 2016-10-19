@@ -6,17 +6,16 @@ import netCDF4
 import matplotlib.pyplot as plt
 from matplotlib import path
 import numpy as np
-from CCITools import minMax, plotCCI, buildRGB, plotRGB
+from CCITools import minMax, plotCCI, buildRGB, plotRGB, plotRGBMulti
 import sys
 import math
 import numpy.ma as ma
 from scipy import stats
-from osgeo._gdal import GDAL_GCP_GCPLine_get
 
 figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-delLat = "0.05"
-delLon = "0.05"
+delLat = "0.5"
+delLon = "0.5"
 N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
 MYDPrimaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_primary.nc"
 N18SecondaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_secondary.nc"
@@ -49,9 +48,6 @@ pathL2MYDPrimaryResampled = mainL2 + MYDPrimaryResampledName
 MYDPrimaryResampled = CCI(pathL2MYDPrimaryResampled)
 pathL2MYDSecondaryResampled = mainL2 + MYDSecondaryResampledName
 MYDSecondaryResampled = CCI(pathL2MYDSecondaryResampled)
-
-#ds = gdal.Open(pathL2MYDSecondaryResampled).ReadAsArray()
-
 
 # subset borders in lat/lon
 centrePoint = [64.5, -102.5] #[71 ,  -80 ] 
@@ -89,17 +85,39 @@ N18MYDMaskCombined = N18ResampledCloudMask + MYDResampledCloudMask
 # 1) compare CCI products from N18, MYD, and AATSR
 
     # a) RGB, ideally highly resolved MODIS with 0.6, 0.8, and 1.6 (1.6 has missing scan lines though)
-if False:
+if True:
     print "RGB: started."
-    colourTuple = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled)
-    plotRGB(colourTuple, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.albedo_in_channel_no_1, 
+    platform = "MYD"
+    colourTupleMYD = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled, platform)
+    RGBName = figuresDir + "RGB_" + platform + ".png"
+    plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.albedo_in_channel_no_1, 
+            centrePoint[0], centrePoint[1])
+    platform = "N18"
+    colourTupleN18 = buildRGB(N18PrimaryResampled, N18SecondaryResampled, platform)
+    RGBName = figuresDir + "RGB_" + platform + ".png"
+    plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.albedo_in_channel_no_1, 
             centrePoint[0], centrePoint[1])
     print "RGB: done."
+    colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis]), axis=2)
+    RGBName = figuresDir + "RGB_multi.png" 
+    plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.albedo_in_channel_no_1, 
+            centrePoint[0], centrePoint[1])
+    
+    
+    sys.exit()
 
     # b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
+timeDiff = ((MYDPrimaryResampled.time - math.floor(MYDPrimaryResampled.time.min())) \
+            - (N18PrimaryResampled.time - math.floor(N18PrimaryResampled.time.min()))) * 24 * 60
+if True:
+    print "The minimum/mean/maximum time difference between MODIS AQUA and NOAA18 is: ", \
+        round(timeDiff.min(), 2), "min/", round(np.mean(timeDiff), 2), "min/", round(timeDiff.max(), 2), "min"
 
     # c) calculate min/mean/max solzen and satzen for all 3 sensors
-
+if True:
+    print "Min solzen MYD  = ", round(MYDPrimaryResampled.solar_zenith_view_no1.min(), 2)
+    print "Mean solzen MYD = ", round(np.mean(MYDPrimaryResampled.solar_zenith_view_no1), 2)
+    print "Max solzen MYD  = ", round(MYDPrimaryResampled.solar_zenith_view_no1.max(), 2)
         # check that all sensors have same amount of data, otherwise create mask --> print n values
 
     # d) plot ctp for N18, MYD, AATSR
@@ -123,14 +141,8 @@ variable = "cth"
 
 # 1b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
 
-timeDiff = ((MYDResampled.time - math.floor(MYDResampled.time.min())) \
-                - (N18Resampled.time - math.floor(N18Resampled.time.min()))) * 24 * 60
-if True:
-    print "The minimum/maximum time difference between MODIS AQUA and NOAA18 is: ", \
-        round(timeDiff.min(), 2), "min /", round(timeDiff.max(), 2), "min"
 
-
-
+sys.exit()
 plotCCI(N18Resampled, MYDResampled, boundingBox, centrePoint, variable, 
         'NOAA18', mask = N18MYDMaskCombined) 
 print "N18 " + variable + " mean = " + str(round(getattr(N18Resampled, variable).mean(), 2))
