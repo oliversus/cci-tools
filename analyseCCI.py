@@ -88,14 +88,14 @@ class CCI():
         self.getLatLon()
         boundingBoxIndexes = self.getBoundingBoxIndexes(boundingBox)
         self.boxSlice = np.index_exp[boundingBoxIndexes[2]:boundingBoxIndexes[3],
-                                boundingBoxIndexes[0]:boundingBoxIndexes[1]]
+                                     boundingBoxIndexes[0]:boundingBoxIndexes[1]]
         self.getLatLon(slice = self.boxSlice)
 
     def getSlice(self, boundingBox = [-150, 70, 58, 65.0]):
         self.getLatLon()
         boundingBoxIndexes = self.getBoundingBoxIndexes(boundingBox)
         self.boxSlice = np.index_exp[boundingBoxIndexes[2]:boundingBoxIndexes[3],
-                                boundingBoxIndexes[0]:boundingBoxIndexes[1]]
+                                     boundingBoxIndexes[0]:boundingBoxIndexes[1]]
         del self.lon
         del self.lat
         

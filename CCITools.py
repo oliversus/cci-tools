@@ -1,6 +1,6 @@
 from __future__ import division
 from analyseCCI import CCI
-from mpl_toolkits.basemap import Basemap, cm
+from mpl_toolkits.basemap import Basemap, cm, latlon_default
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import spatial
@@ -10,8 +10,9 @@ import math
 from netCDF4 import Dataset
 import colorsys
 import time
+from matplotlib.patches import Polygon
 
-def writeCCI(path, data, targetGrid, primary, NOAA = True):
+def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         
     ncOut = Dataset(path, "w", format="NETCDF4")
 
@@ -72,7 +73,7 @@ def writeCCI(path, data, targetGrid, primary, NOAA = True):
 
     else:
 
-        if NOAA:
+        if platform == "N18":
             albedo1 = ncOut.createVariable("albedo_in_channel_no_1","f8",("along_track", "across_track"))
             albedo1[:,:] = data[:,:,0]
             
@@ -100,7 +101,7 @@ def writeCCI(path, data, targetGrid, primary, NOAA = True):
             bt6 = ncOut.createVariable("brightness_temperature_in_channel_no_6","f8",("along_track", "across_track"))
             bt6[:,:] = data[:,:,8]
 
-        else:
+        elif platform == "MYD":
 
             albedo1 = ncOut.createVariable("albedo_in_channel_no_1","f8",("along_track", "across_track"))
             albedo1[:,:] = data[:,:,0]
@@ -129,9 +130,33 @@ def writeCCI(path, data, targetGrid, primary, NOAA = True):
             bt32 = ncOut.createVariable("brightness_temperature_in_channel_no_32","f8",("along_track", "across_track"))
             bt32[:,:] = data[:,:,8]
 
+        elif platform == "ENV":
+
+            reflectance1 = ncOut.createVariable("reflectance_in_channel_no_1","f8",("along_track", "across_track"))
+            reflectance1[:,:] = data[:,:,0]
+
+            reflectance2 = ncOut.createVariable("reflectance_in_channel_no_2","f8",("along_track", "across_track"))
+            reflectance2[:,:] = data[:,:,1]
+
+            reflectance6 = ncOut.createVariable("reflectance_in_channel_no_3","f8",("along_track", "across_track"))
+            reflectance6[:,:] = data[:,:,2]
+
+            bt20 = ncOut.createVariable("brightness_temperature_in_channel_no_4","f8",("along_track", "across_track"))
+            bt20[:,:] = data[:,:,3]
+
+            bt31 = ncOut.createVariable("brightness_temperature_in_channel_no_5","f8",("along_track", "across_track"))
+            bt31[:,:] = data[:,:,4]
+        
+            bt32 = ncOut.createVariable("brightness_temperature_in_channel_no_6","f8",("along_track", "across_track"))
+            bt32[:,:] = data[:,:,5]
+            
+        else:
+            print "ERROR in writeCCI: platform must be one of [N18, MYD, ENV]"
+            sys.exit()
+
     ncOut.close()
 
-def resampleCCI(sourceCCI, targetGrid, lat_in = None, lon_in = None, NOAA = True):
+def resampleCCI(sourceCCI, targetGrid, sensor, lat_in = None, lon_in = None):
     # aim: resample CCI L2 orbit data from orbit projection to regular lat/lon grid
     # grid dimension and resolution is user defined
     # approach: average all pixel values whose centre are within grid box
@@ -154,22 +179,29 @@ def resampleCCI(sourceCCI, targetGrid, lat_in = None, lon_in = None, NOAA = True
                      "ctp", "ctp_corrected", "cth", "cth_corrected", "ctt", "ctt_corrected", "cc_total",
                      "cccot_pre", "phase"]
     else:
-        if NOAA:
+        if sensor == "N18":
             variables = ["albedo_in_channel_no_1", "albedo_in_channel_no_2", "albedo_in_channel_no_3",
                          "reflectance_in_channel_no_1", "reflectance_in_channel_no_2", "reflectance_in_channel_no_3",
                          "brightness_temperature_in_channel_no_4", "brightness_temperature_in_channel_no_5",
                          "brightness_temperature_in_channel_no_6"]    
-        else:
+        elif sensor == "MYD":
             variables = ["albedo_in_channel_no_1", "albedo_in_channel_no_2", "albedo_in_channel_no_6",
                          "reflectance_in_channel_no_1", "reflectance_in_channel_no_2", "reflectance_in_channel_no_6",
                          "brightness_temperature_in_channel_no_20", "brightness_temperature_in_channel_no_31",
                          "brightness_temperature_in_channel_no_32"]    
+        elif sensor == "ENV":
+            variables = ["reflec_nadir_0670", "reflec_nadir_0870", "reflec_nadir_1600",
+                         "btemp_nadir_0370", "btemp_nadir_1100", "btemp_nadir_1200"]    
+        else:
+            print "ERROR in resampleCCI: sensor needs to be one of [N18, MYD, ENV]."
 
     if primary:
         sourceValues = np.zeros((np.prod(sourceCCI.time.shape), len(variables)))
     else:
-        sourceValues = np.zeros((np.prod(sourceCCI.cot_ap.shape), len(variables)))
-
+        if sensor is "ENV":
+            sourceValues = np.zeros((np.prod(sourceCCI.lat.shape), len(variables)))            
+        else:
+            sourceValues = np.zeros((np.prod(sourceCCI.cot_ap.shape), len(variables)))
     for var_i, var in enumerate(variables):
         sourceValues[:, var_i] = getattr(sourceCCI, var).ravel()
                  
@@ -336,6 +368,9 @@ def buildRGB(primaryData, secondaryData, platform):
     elif platform is "N18":
         ch4 = "brightness_temperature_in_channel_no_4"
         ch5 = "brightness_temperature_in_channel_no_5"
+    elif platform is "ENV":
+        ch4 = "brightness_temperature_in_channel_no_4"
+        ch5 = "brightness_temperature_in_channel_no_5"        
     else:
         print "Error: select one of [MYD, N18] as input platform."
         sys.exit()
@@ -343,7 +378,7 @@ def buildRGB(primaryData, secondaryData, platform):
     # get variables if attributes not available
     if not hasattr(primaryData, "solar_zenith_view_no1"):
         primaryData.getAllVariables()
-    if not hasattr(secondaryData, "albedo_in_channel_no_1"):
+    if not hasattr(secondaryData, "reflectance_in_channel_no_1"):
         secondaryData.getAllVariables()        
 
     # define new numpy cosine function that accepts degrees as argument
@@ -453,7 +488,7 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
         color = 'black', linewidth = 0.5,
         labels=[True, False, False, False])
     map.drawmeridians(
-        np.arange(-180, 0, 10.),
+        np.arange(-180, 180, 10.),
         color = '0.25', linewidth = 0.5,
         labels=[False, False, False, True])
         
@@ -464,6 +499,7 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
 
 def plotRGBMulti(figureName, colourTuple,
             lat, lon, dummy,
+            latCalipso, lonCalipso,
             lat_0, lon_0,
             width = 5000000, height = 5000000,
             res = 'l',
@@ -478,6 +514,10 @@ def plotRGBMulti(figureName, colourTuple,
                   resolution='l', projection = 'stere',
                   lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
 
+    # define calipso lat, lon
+    x, y = np.reshape(lonCalipso, (4208, 1)), np.reshape(latCalipso, (4208, 1))
+    xCalipso, yCalipso = map(x, y)
+
     # define figure size
     figWidth = 10 * nPlots
     fig1 = plt.figure(figsize = (figWidth, 10))
@@ -485,6 +525,10 @@ def plotRGBMulti(figureName, colourTuple,
     # define # subplots
     nRows = 1
     nCols = nPlots
+    
+    lats = [58.5, 78, 84., 63]
+    lons = [-121, -73, -63., -128.5]
+
     for i in range(nPlots):
         ax = fig1.add_subplot(nRows, nCols, i + 1)
 
@@ -499,12 +543,64 @@ def plotRGBMulti(figureName, colourTuple,
             color = 'black', linewidth = 0.5,
             labels=[True, False, False, False])
         map.drawmeridians(
-            np.arange(-180, 0, 10.),
+            np.arange(-180, 180, 10.),
             color = '0.25', linewidth = 0.5,
             labels=[False, False, False, True])
         
         # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
         mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,i], latlon = True, linewidth = 0.05, clip_on = True)
         mesh.set_array(None)
-        
+        mesh = map.plot(xCalipso, yCalipso, color = 'red', linestyle="dashed")
+        draw_screen_poly(lats, lons, map)
     plt.savefig(figureName, bbox_inches='tight')
+  
+def mergeGranules(path1, path2, outPath):
+    """Take two spatially adjacent MODIS granule files, read each variable, merge them, and write to new file"""
+    print "Merging MODIS granules."
+    
+    # create CCI objects
+    data1 = CCI(path1)
+    data2 = CCI(path2)
+    
+    # get all variables
+    data1.getAllVariables()
+    data2.getAllVariables()
+    
+    # create output CCI object 
+    data3 = CCI(path1)
+    
+    # create output NetCDF file
+    ncOut = Dataset(outPath, "w", format="NETCDF4")
+    
+    # merge input variables and write to output variables
+    i = 0
+    for vName in iter(data1.dataset.variables):
+        i += 1
+        print vName
+        v1 = getattr(data1, vName)
+        v2 = getattr(data2, vName)
+        
+        vMerge = np.concatenate((v1,v2))
+        setattr(data3, vName, vMerge)
+        
+        if i is 1:
+            along_track = ncOut.createDimension("along_track", vMerge.shape[0])
+            across_track = ncOut.createDimension("across_track", vMerge.shape[1])
+    
+        foo = ncOut.createVariable(vName,"f8",("along_track", "across_track"))
+        foo[:,:] = getattr(data3, vName)
+        
+    
+    ncOut.close()
+
+def draw_screen_poly(lats, lons, m):
+    x, y = m(lons, lats)
+    xy = zip(x,y)
+    poly = Polygon(xy, color='black', alpha=1., fill=False)
+    plt.gca().add_patch(poly)
+    
+    
+    
+    
+    
+

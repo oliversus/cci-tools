@@ -11,17 +11,45 @@ import sys
 import math
 import numpy.ma as ma
 from scipy import stats
+from pyhdf.SD import SD,SDC
+from asyncore import read
+from pyhdf.HDF import HDF
+from sys import argv
+
+if len(argv) > 1:
+    print argv
+    delLon = argv[1]
+    delLat = argv[1]
+    sys.exit()
+
+calipsoPath1km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/1kmClay/2008/07/22/CAL_LID_L2_01kmCLay-ValStage1-V3-01.2008-07-22T18-41-41ZD.hdf"
+calipsoPath5km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/2008/07/22/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
+hdf = SD(calipsoPath5km, SDC.READ)
+# Read geolocation
+lat = hdf.select('Latitude')
+lon = hdf.select('Longitude')
+cod = hdf.select('Column_Optical_Depth_Cloud_532')
+ctp = hdf.select('Layer_Top_Pressure')
+calipsoLat = lat[:,1] # 4208,
+calipsoLon = lon[:,1] # 4208,
+calipsoCOD = cod[:,0] # 4208,
+calipsoCTP = ctp[:,:] # 4208, 10
+
+featureFlag = 2
 
 figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
+mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
 mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-delLat = "0.05"
-delLon = "0.05"
+delLat = "0.5"
+delLon = "0.5"
 delLatStr = str(delLat); delLatStr = delLatStr.replace(".", "")
 delLonStr = str(delLon); delLonStr = delLonStr.replace(".", "")
 N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
 MYDPrimaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_primary.nc"
+ENVPrimaryResampledName = "ENV_Resampled_2008-07-22-1844_lat" + delLat + "lon" + delLon + "_primary.nc"
 N18SecondaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_secondary.nc"
 MYDSecondaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_secondary.nc"
+ENVSecondaryResampledName = "ENV_Resampled_2008-07-22-1844_lat" + delLat + "lon" + delLon + "_secondary.nc"
 
 # NOAA18 paths and data
 print "Reading NOAA18 data"
@@ -32,8 +60,15 @@ secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD20080722_1915.nc"
-pathL2SecMYD = mainL2 + "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc"
+pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc"
+pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc"
+priMYD = CCI(pathL2PriMYD)
+secMYD = CCI(pathL2SecMYD)
+
+# ENVISAT AATSR paths and data
+print "Reading ENVISAT AATSR data"
+pathL2PriENV = mainL2 + "ESACCI-L2-CLOUD-CLD-AATSR_CC4CL_Envisat_200807221844_fv2.0.primary.nc"
+pathL2SecENV = mainL1 + "ATS_TOA_1PUUPA20080722_184428_000065272070_00313_33433_6676.nc"
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 
@@ -51,8 +86,15 @@ MYDPrimaryResampled = CCI(pathL2MYDPrimaryResampled)
 pathL2MYDSecondaryResampled = mainL2 + MYDSecondaryResampledName
 MYDSecondaryResampled = CCI(pathL2MYDSecondaryResampled)
 
+# ENVISAT AATSR paths and data, RESAMPLED
+print "Reading resampled ENVISAT AATSR data"
+pathL2ENVPrimaryResampled = mainL2 + ENVPrimaryResampledName
+ENVPrimaryResampled = CCI(pathL2ENVPrimaryResampled)
+pathL2ENVSecondaryResampled = mainL2 + ENVSecondaryResampledName
+ENVSecondaryResampled = CCI(pathL2ENVSecondaryResampled)
+
 # subset borders in lat/lon
-centrePoint = [64.5, -102.5] #[71 ,  -80 ] 
+centrePoint = [66.5, -108.] #[64.5, -102.5] 
 leftPoint   = [70  , -150]
 upperPoint  = [87  ,  70 ]#95 ]
 rightPoint  = [87.5,  82 ]
@@ -61,7 +103,7 @@ latBounds   = [58  , 87.5]
 lonBounds   = [-150,  95 ]
 boundingBox = [leftPoint[1], upperPoint[1], lowerPoint[0], rightPoint[0]]
 boundingBox[3] = 65.
-boundingBox = [-134, -76, 52, 74]
+boundingBox = [-134, -76, 52, 90]
 
 # get all variables
 # print "Getting all variables: NOAA18"
@@ -76,11 +118,21 @@ N18SecondaryResampled.getAllVariables()
 print "Getting all variables: MODIS resampled"
 MYDPrimaryResampled.getAllVariables()
 MYDSecondaryResampled.getAllVariables()
+print "Getting all variables: Envisat resampled"
+ENVPrimaryResampled.getAllVariables()
+ENVSecondaryResampled.getAllVariables()
 
 # mask all resampled pixels with cc_total < 1 to exclude fractional cloud coverage
 N18ResampledCloudMask = ma.masked_less(N18PrimaryResampled.cc_total, 1.).mask
 MYDResampledCloudMask = ma.masked_less(MYDPrimaryResampled.cc_total, 1.).mask
-N18MYDMaskCombined = N18ResampledCloudMask + MYDResampledCloudMask
+ENVResampledCloudMask = ma.masked_less(ENVPrimaryResampled.cc_total, 1.).mask
+AllSensorsMaskCombined = N18ResampledCloudMask + MYDResampledCloudMask
+
+N18ReflMask = N18SecondaryResampled.reflectance_in_channel_no_1.mask
+MYDReflMask = MYDSecondaryResampled.reflectance_in_channel_no_1.mask
+ENVReflMask = ENVSecondaryResampled.reflectance_in_channel_no_1.mask
+ReflMask = N18ReflMask + MYDReflMask
+#ENVSecondaryResampled.reflectance_in_channel_no_1.mask += ReflMask
 
 #################################################################################################
 # plot variables and calculate statistics
@@ -92,19 +144,25 @@ if True:
     platform = "MYD"
     colourTupleMYD = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled, platform)
     RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
-    plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.albedo_in_channel_no_1, 
+    plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.reflectance_in_channel_no_1, 
             centrePoint[0], centrePoint[1])
     platform = "N18"
     colourTupleN18 = buildRGB(N18PrimaryResampled, N18SecondaryResampled, platform)
     RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
-    plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.albedo_in_channel_no_1, 
+    plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1, 
             centrePoint[0], centrePoint[1])
-    print "RGB: done."
-    colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleMYD[..., np.newaxis]), axis=2)
-    RGBName = figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + ".png"
-    plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.albedo_in_channel_no_1, 
+    platform = "ENV"
+    colourTupleENV = buildRGB(ENVPrimaryResampled, ENVSecondaryResampled, platform)
+    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
+    plotRGB(RGBName, colourTupleENV, ENVSecondaryResampled.lat, ENVSecondaryResampled.lon, ENVSecondaryResampled.reflectance_in_channel_no_1, 
             centrePoint[0], centrePoint[1])    
-    
+    colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleENV[..., np.newaxis]), axis=2)
+    RGBName = figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + ".png"
+    plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1, 
+                calipsoLat, calipsoLon,
+                centrePoint[0], centrePoint[1])    
+    print "RGB: done."
+
     sys.exit()
 
     # b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
@@ -145,11 +203,11 @@ variable = "cth"
 
 sys.exit()
 plotCCI(N18Resampled, MYDResampled, boundingBox, centrePoint, variable, 
-        'NOAA18', mask = N18MYDMaskCombined) 
+        'NOAA18', mask = AllSensorsMaskCombined) 
 print "N18 " + variable + " mean = " + str(round(getattr(N18Resampled, variable).mean(), 2))
 print "N18 " + variable + " stdev = " + str(round(getattr(N18Resampled, variable).std(), 2))
 plotCCI(N18Resampled, MYDResampled, boundingBox, centrePoint, variable, 
-        'MYD', mask = N18MYDMaskCombined) 
+        'MYD', mask = AllSensorsMaskCombined) 
 print "MYD " + variable + " mean = " + str(round(getattr(MYDResampled, variable).mean(), 2))
 print "MYD " + variable + " stdev = " + str(round(getattr(MYDResampled, variable).std(), 2))
 input = abs(getattr(MYDResampled, variable) - getattr(N18Resampled, variable))
