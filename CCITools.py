@@ -11,6 +11,7 @@ from netCDF4 import Dataset
 import colorsys
 import time
 from matplotlib.patches import Polygon
+from math import radians, cos, sin, asin, sqrt
 
 def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         
@@ -156,10 +157,26 @@ def writeCCI(path, data, targetGrid, primary, platform = "N18"):
 
     ncOut.close()
 
+def greatCircle(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points 
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians 
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+
+    # haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a)) 
+    r = 6371 # Radius of earth in kilometers. Use 3956 for miles
+    return c * r
+
 def resampleCCI(sourceCCI, targetGrid, sensor, lat_in = None, lon_in = None):
     # aim: resample CCI L2 orbit data from orbit projection to regular lat/lon grid
     # grid dimension and resolution is user defined
-    # approach: average all pixel values whose centre are within grid box
+    # approach: average all pixel values whose centre are within grid box    
 
     if lat_in is not None:
         primary = False
@@ -526,7 +543,7 @@ def plotRGBMulti(figureName, colourTuple,
     nRows = 1
     nCols = nPlots
     
-    lats = [58.5, 78, 84., 63]
+    lats = [58.5, 78, 83.5, 63]
     lons = [-121, -73, -63., -128.5]
 
     for i in range(nPlots):
@@ -550,7 +567,7 @@ def plotRGBMulti(figureName, colourTuple,
         # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
         mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,i], latlon = True, linewidth = 0.05, clip_on = True)
         mesh.set_array(None)
-        mesh = map.plot(xCalipso, yCalipso, color = 'red', linestyle="dashed")
+        mesh = map.plot(xCalipso, yCalipso, color = 'red', linestyle="dashed", linewidth=2.)
         draw_screen_poly(lats, lons, map)
     plt.savefig(figureName, bbox_inches='tight')
   
@@ -588,15 +605,14 @@ def mergeGranules(path1, path2, outPath):
             across_track = ncOut.createDimension("across_track", vMerge.shape[1])
     
         foo = ncOut.createVariable(vName,"f8",("along_track", "across_track"))
-        foo[:,:] = getattr(data3, vName)
-        
+        foo[:,:] = getattr(data3, vName)        
     
     ncOut.close()
 
 def draw_screen_poly(lats, lons, m):
     x, y = m(lons, lats)
     xy = zip(x,y)
-    poly = Polygon(xy, color='black', alpha=1., fill=False)
+    poly = Polygon(xy, color='red', alpha=1., fill=False, linewidth=2.)
     plt.gca().add_patch(poly)
     
     

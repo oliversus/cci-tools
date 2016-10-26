@@ -1,4 +1,4 @@
-#!/cmsaf/nfshome/routcm/Modules_sw/python/2.7.9/bin/python
+#!/data/osus/Enthought/User/bin/python2.7
 
 from analyseCCI import CCI
 from mpl_toolkits.basemap import Basemap, cm
@@ -15,12 +15,25 @@ from pyhdf.SD import SD,SDC
 from asyncore import read
 from pyhdf.HDF import HDF
 from sys import argv
+from scipy import spatial
 
 if len(argv) > 1:
-    print argv
     delLon = argv[1]
-    delLat = argv[1]
-    sys.exit()
+    delLat = argv[2]
+    doRGB  = argv[3]
+    if argv[3] == "True":
+        doRGB = True
+    elif argv[3] == "False":
+        doRGB = False
+    else:
+        print "ERROR: 3rd argument should be [True/False]."
+        sys.exit()
+else:
+    delLat = "0.5"
+    delLon = "0.5"
+    doRGB = False
+
+print "Plotting " + delLon + " lon x " + delLat + " lat data."
 
 calipsoPath1km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/1kmClay/2008/07/22/CAL_LID_L2_01kmCLay-ValStage1-V3-01.2008-07-22T18-41-41ZD.hdf"
 calipsoPath5km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/2008/07/22/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
@@ -40,8 +53,6 @@ featureFlag = 2
 figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
 mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-delLat = "0.5"
-delLon = "0.5"
 delLatStr = str(delLat); delLatStr = delLatStr.replace(".", "")
 delLonStr = str(delLon); delLonStr = delLonStr.replace(".", "")
 N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
@@ -106,10 +117,6 @@ boundingBox[3] = 65.
 boundingBox = [-134, -76, 52, 90]
 
 # get all variables
-# print "Getting all variables: NOAA18"
-# N18Slice = priN18.getAllVariables(doSlice = True, boundingBox = boundingBox)
-# secN18.getAllVariables(doSlice = True, boundingBox = boundingBox, primary = False, boxSlice = N18Slice)
-# print "Getting all variables: MODIS AQUA"
 MYDSlice = priMYD.getAllVariables(doSlice = True, boundingBox = boundingBox)
 secMYD.getAllVariables(doSlice = True, boundingBox = boundingBox, primary = False, boxSlice = MYDSlice)
 print "Getting all variables: N18 resampled"
@@ -128,18 +135,18 @@ MYDResampledCloudMask = ma.masked_less(MYDPrimaryResampled.cc_total, 1.).mask
 ENVResampledCloudMask = ma.masked_less(ENVPrimaryResampled.cc_total, 1.).mask
 AllSensorsMaskCombined = N18ResampledCloudMask + MYDResampledCloudMask
 
+# build mask of all pixels out of study area, i.e. where any sensor has no reflectance data
 N18ReflMask = N18SecondaryResampled.reflectance_in_channel_no_1.mask
 MYDReflMask = MYDSecondaryResampled.reflectance_in_channel_no_1.mask
 ENVReflMask = ENVSecondaryResampled.reflectance_in_channel_no_1.mask
-ReflMask = N18ReflMask + MYDReflMask
-#ENVSecondaryResampled.reflectance_in_channel_no_1.mask += ReflMask
+ReflMask = N18ReflMask + MYDReflMask + ENVReflMask
 
 #################################################################################################
 # plot variables and calculate statistics
 # 1) compare CCI products from N18, MYD, and AATSR
 
     # a) RGB, ideally highly resolved MODIS with 0.6, 0.8, and 1.6 (1.6 has missing scan lines though)
-if True:
+if doRGB:    
     print "RGB: started."
     platform = "MYD"
     colourTupleMYD = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled, platform)
@@ -161,10 +168,33 @@ if True:
     plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1, 
                 calipsoLat, calipsoLon,
                 centrePoint[0], centrePoint[1])    
-    print "RGB: done."
+    print "RGB: done."    
 
-    sys.exit()
+""" Calipso collocation with CCI grid
+    for each calipso pixel lat/lon,"""
+sourcePoints = np.asarray(zip(calipsoLon, calipsoLat))
+""" find closest CCI grid lat/lon"""
+targetPoints = np.asarray(zip(N18PrimaryResampled.lon.ravel(), N18PrimaryResampled.lat.ravel()))
+""" using a KDTree"""
+tree = spatial.cKDTree(targetPoints)
+for lon, lat in sourcePoints:    
+    nn = tree.query((lon, lat), k = 1)
+    targetIndex = nn[1]    
+    if lon < -100 and lat > 65:
+        print lon, lat
+        print targetIndex
+        print N18PrimaryResampled.lon.ravel()[targetIndex]
 
+N18PrimaryResampled.maskAllVariables(ReflMask)
+N18SecondaryResampled.maskAllVariables(ReflMask)
+MYDPrimaryResampled.maskAllVariables(ReflMask)
+MYDSecondaryResampled.maskAllVariables(ReflMask)
+ENVPrimaryResampled.maskAllVariables(ReflMask)
+ENVSecondaryResampled.maskAllVariables(ReflMask)
+
+sys.exit()
+
+    
     # b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
 timeDiff = ((MYDPrimaryResampled.time - math.floor(MYDPrimaryResampled.time.min())) \
             - (N18PrimaryResampled.time - math.floor(N18PrimaryResampled.time.min()))) * 24 * 60

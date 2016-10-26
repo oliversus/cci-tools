@@ -10,17 +10,31 @@ from CCITools import resampleCCI, minMax, writeCCI, plotCCI, mergeGranules
 import sys
 import math
 import numpy.ma as ma
+from sys import argv
 
 if len(argv) > 1:
-    print argv
-    delLon = argv[1]
-    delLat = argv[1]
-    sys.exit()
+    delLon = float(argv[1])
+    delLat = float(argv[2])
+    if argv[3] == "True":
+        primary = True
+    elif argv[3] == "False":
+        primary = False
+    else:
+        print "ERROR: 3rd argument should be [True/False]."
+        sys.exit()
+else:
+    delLat = 0.5
+    delLon = 0.5
+    primary = True
+
+primaryString = "secondary"
+if primary:
+        primaryString = "primary"
+print "Resampling " + primaryString + " data to " + str(delLon) + " lon x " + str(delLat) + " lat regular grid."
 
 # main path to input files
 mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
 mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-primary = True
 if primary:
     suffix = "_primary"
 else:
@@ -32,10 +46,8 @@ outNameENV = "ENV_Resampled_2008-07-22-1844_"
 # targetGrid:
 minLat = 40.0
 maxLat = 90.0
-delLat = 0.5
 minLon = -179.0
 maxLon = 0.
-delLon = 0.5
 
 targetGrid = cciGrid(minLat, minLon, maxLat, maxLon, delLat = delLat, delLon = delLon)
 targetGrid.buildGrid()

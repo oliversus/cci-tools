@@ -44,6 +44,20 @@ class CCI():
         else:
             for vName in iter(self.dataset.variables):
                 setattr(self, vName, self.dataset.variables[vName][:])
+                
+    def setVariable(self, vName):
+        print "setVariable"
+        
+                
+    def maskAllVariables(self, mask):
+        for vName in iter(self.dataset.variables):
+            foo = getattr(self, vName)
+            
+            if not np.ma.is_masked(foo):
+                foo = foo.view(np.ma.MaskedArray)
+                
+            foo.mask = mask
+            setattr(self, vName, foo)                
 
     def getLon(self, slice = None):
         if slice:
