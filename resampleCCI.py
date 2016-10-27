@@ -1,15 +1,9 @@
-#!/cmsaf/nfshome/routcm/Modules_sw/python/2.7.9/bin/python
+#!/home/oliver/Enthought/Canopy_64bit/User/bin/python
+#/cmsaf/nfshome/routcm/Modules_sw/python/2.7.9/bin/python
 
 from analyseCCI import CCI, cciGrid
-from mpl_toolkits.basemap import Basemap, cm
-import netCDF4
-import matplotlib.pyplot as plt
-from matplotlib import path
-import numpy as np
 from CCITools import resampleCCI, minMax, writeCCI, plotCCI, mergeGranules
 import sys
-import math
-import numpy.ma as ma
 from sys import argv
 
 if len(argv) > 1:
@@ -33,8 +27,10 @@ if primary:
 print "Resampling " + primaryString + " data to " + str(delLon) + " lon x " + str(delLat) + " lat regular grid."
 
 # main path to input files
-mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
-mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
+# mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
+# mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
+mainL1 = "/home/oliver/PycharmProjects/cci-tools/data/"
+mainL2 = mainL1
 if primary:
     suffix = "_primary"
 else:
@@ -67,14 +63,15 @@ boundingBox = [-179., 0., 40, 90] #[-134, -76, 52, 85]
 # NOAA18 paths and data
 print "Reading NOAA18 data"
 pathL2PriN18 = mainL2 + "20080722185100-ESACCI-L2_CLOUD-CLD_PRODUCTS-AVHRRGAC-NOAA18-fv2.0.nc"
-pathL2SecN18 = mainL2 + "ECC_GAC_avhrr_noaa18_99999_20080722T1851289Z_20080722T2046134Z.secondary.nc"   
+pathL2SecN18 = mainL2 + "ECC_GAC_avhrr_noaa18_99999_20080722T1851289Z_20080722T2046134Z.secondary.nc"
+print pathL2PriN18
 priN18 = CCI(pathL2PriN18)
 secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc"
-pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc"
+pathL2PriMYD = mainL2 + "MYD20080722_1915.nc" #"MYD_merged_20080722_19151920_primary.nc"
+pathL2SecMYD = mainL2 + "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc" #"MYD_merged_20080722_19151920_secondary.nc"
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 # pathL2PriMYD2 = mainL2 + "MYD20080722_1920.nc"

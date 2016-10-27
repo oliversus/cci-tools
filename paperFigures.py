@@ -1,19 +1,12 @@
-#!/data/osus/Enthought/User/bin/python2.7
+#!/home/oliver/Enthought/Canopy_64bit/User/bin/python
+#/data/osus/Enthought/User/bin/python2.7
 
 from analyseCCI import CCI
-from mpl_toolkits.basemap import Basemap, cm
-import netCDF4
-import matplotlib.pyplot as plt
-from matplotlib import path
 import numpy as np
-from CCITools import minMax, plotCCI, buildRGB, plotRGB, plotRGBMulti
+from CCITools import buildRGB, plotRGB, plotRGBMulti, greatCircle
 import sys
-import math
 import numpy.ma as ma
-from scipy import stats
-from pyhdf.SD import SD,SDC
-from asyncore import read
-from pyhdf.HDF import HDF
+from pyhdf.SD import SD, SDC
 from sys import argv
 from scipy import spatial
 
@@ -36,7 +29,8 @@ else:
 print "Plotting " + delLon + " lon x " + delLat + " lat data."
 
 calipsoPath1km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/1kmClay/2008/07/22/CAL_LID_L2_01kmCLay-ValStage1-V3-01.2008-07-22T18-41-41ZD.hdf"
-calipsoPath5km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/2008/07/22/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
+#calipsoPath5km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/2008/07/22/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
+calipsoPath5km = "/home/oliver/PycharmProjects/cci-tools/data/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
 hdf = SD(calipsoPath5km, SDC.READ)
 # Read geolocation
 lat = hdf.select('Latitude')
@@ -50,9 +44,12 @@ calipsoCTP = ctp[:,:] # 4208, 10
 
 featureFlag = 2
 
-figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
-mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
-mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
+#figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
+figuresDir = "/home/oliver/PycharmProjects/cci-tools/figures/"
+#mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
+mainL1 = "/home/oliver/PycharmProjects/cci-tools/data/"
+#mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
+mainL2 = "/home/oliver/PycharmProjects/cci-tools/data/"
 delLatStr = str(delLat); delLatStr = delLatStr.replace(".", "")
 delLonStr = str(delLon); delLonStr = delLonStr.replace(".", "")
 N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
@@ -65,14 +62,14 @@ ENVSecondaryResampledName = "ENV_Resampled_2008-07-22-1844_lat" + delLat + "lon"
 # NOAA18 paths and data
 print "Reading NOAA18 data"
 pathL2PriN18 = mainL2 + "20080722185100-ESACCI-L2_CLOUD-CLD_PRODUCTS-AVHRRGAC-NOAA18-fv2.0.nc"
-pathL2SecN18 = mainL2 + "ECC_GAC_avhrr_noaa18_99999_20080722T1851289Z_20080722T2046134Z.secondary.nc"   
+pathL2SecN18 = mainL2 + "ECC_GAC_avhrr_noaa18_99999_20080722T1851289Z_20080722T2046134Z.secondary.nc"
 priN18 = CCI(pathL2PriN18)
 secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc"
-pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc"
+pathL2PriMYD = mainL2 + "MYD20080722_1915.nc" #"MYD_merged_20080722_19151920_primary.nc"
+pathL2SecMYD = mainL2 + "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc" #"MYD_merged_20080722_19151920_secondary.nc"
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 
@@ -88,6 +85,7 @@ print "Reading resampled N18 data"
 pathL2N18PrimaryResampled = mainL2 + N18PrimaryResampledName
 N18PrimaryResampled = CCI(pathL2N18PrimaryResampled)
 pathL2N18SecondaryResampled = mainL2 + N18SecondaryResampledName
+print pathL2N18SecondaryResampled
 N18SecondaryResampled = CCI(pathL2N18SecondaryResampled)
 
 # MODIS AQUA paths and data, RESAMPLED
@@ -170,20 +168,42 @@ if doRGB:
                 centrePoint[0], centrePoint[1])    
     print "RGB: done."    
 
-""" Calipso collocation with CCI grid
-    for each calipso pixel lat/lon,"""
+########################################
+""" Calipso collocation with CCI grid"""
+
+""" for each calipso pixel lat/lon,"""
 sourcePoints = np.asarray(zip(calipsoLon, calipsoLat))
 """ find closest CCI grid lat/lon"""
 targetPoints = np.asarray(zip(N18PrimaryResampled.lon.ravel(), N18PrimaryResampled.lat.ravel()))
-""" using a KDTree"""
+""" using a KDTree, which is built here"""
 tree = spatial.cKDTree(targetPoints)
-for lon, lat in sourcePoints:    
+""" then loop over all Calipso lat/lons"""
+
+x = []
+for lon, lat in sourcePoints:
+    """, get the nearest CCI neighbour for each Calipso pixel"""
     nn = tree.query((lon, lat), k = 1)
+    """, extract its index of the flattened CCI lat/lons"""
     targetIndex = nn[1]    
-    if lon < -100 and lat > 65:
-        print lon, lat
-        print targetIndex
-        print N18PrimaryResampled.lon.ravel()[targetIndex]
+    # if lon < -100 and lat > 65:
+        # print lon, lat
+        # print targetIndex
+        # print N18PrimaryResampled.lon.ravel()[targetIndex]
+    lonNN = N18PrimaryResampled.lon.ravel()[targetIndex]
+    latNN = N18PrimaryResampled.lat.ravel()[targetIndex]
+    # print greatCircle(lon, lat, lonNN, latNN)
+    x.append(greatCircle(lon, lat, lonNN, latNN))
+
+x = np.array(x)
+plt.scatter(sourcePoints[:,0], x)
+plt.ylim(0, 40)
+plt.xlim(-180, -80)
+plt.show()
+
+print x
+print min(x)
+print max(x)
+
 
 N18PrimaryResampled.maskAllVariables(ReflMask)
 N18SecondaryResampled.maskAllVariables(ReflMask)
