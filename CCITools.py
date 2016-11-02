@@ -249,6 +249,9 @@ def minMax(a):
     except:
         return a.min(), a.max()
 
+def intToBin(x):
+    return str(bin(x)[2:])
+
 def plotVariable(CCIpri, CCIsec,
                  lat_0, lon_0,
                  variable = "cot", input = None, plotInput = False,
@@ -615,7 +618,105 @@ def draw_screen_poly(lats, lons, m):
     poly = Polygon(xy, color='red', alpha=1., fill=False, linewidth=2.)
     plt.gca().add_patch(poly)
     
-    
+def collocateCciAndCalipso(cci, calipso, maxDistance):
+    print "collocating CCI and Calipso"
+    cciLon = np.ma.compressed(cci.lon)
+    cciLat = np.ma.compressed(cci.lat)
+    cciCot = np.ma.compressed(cci.cot)
+    cciCtt = np.ma.compressed(cci.ctt)
+    cciCtp = np.ma.compressed(cci.ctp)
+
+    calLon = calipso.get('lon')
+    calLat = calipso.get('lat')
+    calCod = calipso.get('cod')
+    calCodLay = calipso.get('codLayered')
+    calCtt = calipso.get('ctt')
+    calCtp = calipso.get('ctp')
+    calFcf = calipso.get('fcf')
+
+    """ for each calipso pixel lat/lon,"""
+    print "building source points"
+    sourcePoints = np.asarray(zip(calLon, calLat))
+    """ find closest CCI grid lat/lon"""
+    print "building target points"
+    targetPoints = np.asarray(zip(cciLon, cciLat))
+    """ using a KDTree (which is built here)."""
+    print "building KD trees"
+    tree = spatial.cKDTree(targetPoints)
+
+    """initialise collocated output variables"""
+    colDist = []
+    colCot = []
+    colCtt = []
+    colCtp = []
+    colLatCalipso = []
+    colLonCalipso = []
+    colCodCalipso = []
+    colCodCalipsoCum = []
+    colCTPCalipso = []
+    colCTTCalipso = []
+
+    """ Loop over all Calipso lat/lons, """
+    i = 0
+    for lon, lat in sourcePoints:
+        """ get the nearest CCI neighbour for each Calipso pixel, """
+        nn = tree.query((lon, lat), k=1)
+        """ extract its index in the flattened CCI lat/lons, """
+        targetIndex = nn[1]
+        lonNN = cciLon[targetIndex]
+        latNN = cciLat[targetIndex]
+        """ and calculate the great circle distance between Calipso lat/lon and nearest neighbour CCI lat/lon."""
+        calipsoToBox = greatCircle(lon, lat, lonNN, latNN)
+        """If this distance is smaller than the maximum possible distance, """
+        if calipsoToBox < maxDistance:
+            colCodCalipsoSum = 0.
+            """" get Calipso feature flag, looping over atmosphere layers"""
+            for l in range(calFcf.shape[1]):
+                flagInt = int(calFcf[i, l])
+                flagLength = flagInt.bit_length()
+                flagBin = intToBin(calFcf[i, l])
+                """ and extract cloud mask information at this layer."""
+                colCmaskCalipso = int(flagBin[flagLength - 3:flagLength], 2)  # 0=invalid,1=clear,2=cloud
+                """If Calipso says there is a cloud, """
+                if colCmaskCalipso is 2:
+                    """ sum up the layer optical depth until a threshold value is reached where we'll say the cloud top is."""
+                    colCodCalipsoSum += calCodLay[i, l]
+                    """If the Cod threshold has been exceeded, """
+                    if colCodCalipsoSum > 0.15:
+                        """add data to collocated variables"""
+                        colDist.append(calipsoToBox)
+                        colCot.append(cciCot[targetIndex])
+                        colCtt.append(cciCtt[targetIndex])
+                        colCtp.append(cciCtp[targetIndex])
+                        colLatCalipso.append(lat)
+                        colLonCalipso.append(lon)
+                        colCodCalipso.append(calCod[i])
+                        """get the phase and type"""
+                        colPhaseCalipso = int(flagBin[flagLength - 7:flagLength - 5], 2)  # 1=ice,2=water,3=mixed
+                        colTypeCalipso = int(flagBin[flagLength - 12:flagLength - 9],
+                                             2)  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
+                        colCodCalipsoCum.append(colCodCalipsoSum)
+                        colCTPCalipso.append(calCtp[i, l])
+                        colCTTCalipso.append(calCtt[i, l] + 273.15)
+                        break
+        i += 1
+
+    """output variables should be numpy arrays and not dictionaries"""
+    colCot = np.array(colCot)
+    colCot = np.ma.masked_greater(colCot, 1000.)
+    colCodCalipso = np.array(colCodCalipso)
+    colCtt = np.array(colCtt)
+    colCtt = np.ma.masked_greater(colCtt, 1000.)
+    colCTTCalipso = np.array(colCTTCalipso)
+    colCtp = np.array(colCtp)
+    colCtp = np.ma.masked_greater(colCtp, 10000.)
+    colCTPCalipso = np.array(colCTPCalipso)
+    colLatCalipso = np.array(colLatCalipso)
+    out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp,
+           'calipsoCOD': colCodCalipso, 'calipsoCtt': colCTTCalipso,
+           'calipsoCtp': colCTPCalipso, 'calipsoLat': colLatCalipso}
+    return out
+
     
     
     

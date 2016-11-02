@@ -1,14 +1,14 @@
-#!/home/oliver/Enthought/Canopy_64bit/User/bin/python
-#/data/osus/Enthought/User/bin/python2.7
+#!/data/osus/Enthought/User/bin/python2.7
 
 from analyseCCI import CCI
 import numpy as np
-from CCITools import buildRGB, plotRGB, plotRGBMulti, greatCircle
+from CCITools import buildRGB, plotRGB,\
+    plotRGBMulti, greatCircle, collocateCciAndCalipso
 import sys
 import numpy.ma as ma
 from pyhdf.SD import SD, SDC
 from sys import argv
-from scipy import spatial
+import matplotlib.pyplot as plt
 
 if len(argv) > 1:
     delLon = argv[1]
@@ -22,34 +22,37 @@ if len(argv) > 1:
         print "ERROR: 3rd argument should be [True/False]."
         sys.exit()
 else:
-    delLat = "0.5"
-    delLon = "0.5"
+    delLat = "0.1"
+    delLon = "0.1"
     doRGB = False
 
-print "Plotting " + delLon + " lon x " + delLat + " lat data."
 
 calipsoPath1km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/1kmClay/2008/07/22/CAL_LID_L2_01kmCLay-ValStage1-V3-01.2008-07-22T18-41-41ZD.hdf"
-#calipsoPath5km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/2008/07/22/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
-calipsoPath5km = "/home/oliver/PycharmProjects/cci-tools/data/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
+calipsoPath5km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/2008/07/22/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
 hdf = SD(calipsoPath5km, SDC.READ)
 # Read geolocation
 lat = hdf.select('Latitude')
 lon = hdf.select('Longitude')
 cod = hdf.select('Column_Optical_Depth_Cloud_532')
+codCum = hdf.select('Feature_Optical_Depth_532')
 ctp = hdf.select('Layer_Top_Pressure')
+ctt = hdf.select('Layer_Top_Temperature')
+cloudFlag = hdf.select('Feature_Classification_Flags')
 calipsoLat = lat[:,1] # 4208,
 calipsoLon = lon[:,1] # 4208,
 calipsoCOD = cod[:,0] # 4208,
 calipsoCTP = ctp[:,:] # 4208, 10
+calipsoCTT = ctt[:,:] # 4208, 10
+calipsoFCF = cloudFlag[:,:] # 4208, 10: 0 is top, 9 bottom layer
+calipsoCODLayer = codCum[:,:] # 4208, 10: 0 is top, 9 bottom layer
+calipsoData = {'lat': calipsoLat, 'lon': calipsoLon,
+               'cod': calipsoCOD, 'codLayered': calipsoCODLayer,
+               'ctp': calipsoCTP, 'ctt': calipsoCTT,
+               'fcf': calipsoFCF}
 
-featureFlag = 2
-
-#figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
-figuresDir = "/home/oliver/PycharmProjects/cci-tools/figures/"
-#mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
-mainL1 = "/home/oliver/PycharmProjects/cci-tools/data/"
-#mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-mainL2 = "/home/oliver/PycharmProjects/cci-tools/data/"
+figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
+mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
+mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
 delLatStr = str(delLat); delLatStr = delLatStr.replace(".", "")
 delLonStr = str(delLon); delLonStr = delLonStr.replace(".", "")
 N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
@@ -68,8 +71,8 @@ secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD20080722_1915.nc" #"MYD_merged_20080722_19151920_primary.nc"
-pathL2SecMYD = mainL2 + "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc" #"MYD_merged_20080722_19151920_secondary.nc"
+pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc" #"MYD20080722_1915.nc"
+pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc" #"MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc"
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 
@@ -103,13 +106,13 @@ pathL2ENVSecondaryResampled = mainL2 + ENVSecondaryResampledName
 ENVSecondaryResampled = CCI(pathL2ENVSecondaryResampled)
 
 # subset borders in lat/lon
-centrePoint = [66.5, -108.] #[64.5, -102.5] 
-leftPoint   = [70  , -150]
-upperPoint  = [87  ,  70 ]#95 ]
-rightPoint  = [87.5,  82 ]
-lowerPoint  = [58  , -85 ]
-latBounds   = [58  , 87.5]
-lonBounds   = [-150,  95 ]
+centrePoint = [66.5, -108.]
+leftPoint = [70, -150]
+upperPoint = [87,  70]
+rightPoint = [87.5,  82]
+lowerPoint = [58, -85]
+latBounds = [58, 87.5]
+lonBounds = [-150,  95]
 boundingBox = [leftPoint[1], upperPoint[1], lowerPoint[0], rightPoint[0]]
 boundingBox[3] = 65.
 boundingBox = [-134, -76, 52, 90]
@@ -171,39 +174,66 @@ if doRGB:
 ########################################
 """ Calipso collocation with CCI grid"""
 
-""" for each calipso pixel lat/lon,"""
-sourcePoints = np.asarray(zip(calipsoLon, calipsoLat))
-""" find closest CCI grid lat/lon"""
-targetPoints = np.asarray(zip(N18PrimaryResampled.lon.ravel(), N18PrimaryResampled.lat.ravel()))
-""" using a KDTree, which is built here"""
-tree = spatial.cKDTree(targetPoints)
-""" then loop over all Calipso lat/lons"""
+"""mask all CCI pixels that do not have reflectance values for all 3 sensors"""
+N18PrimaryResampled.maskAllVariables(ReflMask)
+MYDPrimaryResampled.maskAllVariables(ReflMask)
+ENVPrimaryResampled.maskAllVariables(ReflMask)
+"""the maximum distance between Calipso and a grid box center is given by
+    the great circle distance between the grid box center and one of its corners
+    which is half of the grid box diagonal, which can be calculated with Pythagoras"""
+"""The lat/lon spacing"""
+dello = float(delLon)
+della = float(delLat)
+"""and the grid box longitude/latitude width"""
+boxLonWidth = dello * greatCircle(centrePoint[1], centrePoint[0], centrePoint[1] + 1., centrePoint[0])
+boxLatWidth = della * greatCircle(centrePoint[1], centrePoint[0], centrePoint[1], centrePoint[0] + 1.)
+"""give the grid box diagonal"""
+boxDiag = (boxLonWidth**2 + boxLatWidth**2)**0.5
+"""half of which is the maximum distance of Calipso to any grid box center"""
+maxDistance = boxDiag / 2.
+"""The maximum distance is input to the collocation method,
+    returning collocated CCI and Calipso data."""
+collocateN18 = collocateCciAndCalipso(N18PrimaryResampled, calipsoData, maxDistance)
+collocateMYD = collocateCciAndCalipso(MYDPrimaryResampled, calipsoData, maxDistance)
+collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDistance)
 
-x = []
-for lon, lat in sourcePoints:
-    """, get the nearest CCI neighbour for each Calipso pixel"""
-    nn = tree.query((lon, lat), k = 1)
-    """, extract its index of the flattened CCI lat/lons"""
-    targetIndex = nn[1]    
-    # if lon < -100 and lat > 65:
-        # print lon, lat
-        # print targetIndex
-        # print N18PrimaryResampled.lon.ravel()[targetIndex]
-    lonNN = N18PrimaryResampled.lon.ravel()[targetIndex]
-    latNN = N18PrimaryResampled.lat.ravel()[targetIndex]
-    # print greatCircle(lon, lat, lonNN, latNN)
-    x.append(greatCircle(lon, lat, lonNN, latNN))
-
-x = np.array(x)
-plt.scatter(sourcePoints[:,0], x)
-plt.ylim(0, 40)
-plt.xlim(-180, -80)
-plt.show()
-
-print x
-print min(x)
-print max(x)
-
+"""Plot collocated data for COT, CTP, and CTT."""
+"""The xaxis reference is Calipso's latitude"""
+plotLat = collocateN18.get('calipsoLat')
+"""Figure settings."""
+fig = plt.figure(figsize=(8, 10))
+"""COT"""
+ax = fig.add_subplot(3,1,1) # 3 plots, vertically arranged
+ax.set_ylim([0, 50])
+plt.gca().invert_yaxis()
+ax.set_xlim([69.5, 75])
+ax.scatter(plotLat, collocateN18.get('cciCot'), label="AVHRR")
+ax.scatter(plotLat, collocateMYD.get('cciCot'), label="MODIS AQUA", c="g")
+ax.scatter(plotLat, collocateENV.get('cciCot'), label="AATSR", c="y")
+ax.scatter(plotLat, collocateN18.get('calipsoCOD'), label="Calipso", c="r")
+ax.set_ylabel("COT")
+ax.legend(loc=4)
+"""CTT"""
+ax = fig.add_subplot(3,1,2)
+plt.gca().invert_yaxis()
+ax.set_xlim([69.5, 75])
+ax.scatter(plotLat, collocateN18.get('cciCtt'))
+ax.scatter(plotLat, collocateMYD.get('cciCtt'), c="g")
+ax.scatter(plotLat, collocateENV.get('cciCtt'), c="y")
+ax.scatter(plotLat, collocateN18.get('calipsoCtt'), c="r")
+ax.set_ylabel("CTT [K]")
+"""CTP"""
+ax = fig.add_subplot(3,1,3)
+plt.gca().invert_yaxis()
+ax.set_xlim([69.5, 75])
+ax.scatter(plotLat, collocateN18.get('cciCtp'))
+ax.scatter(plotLat, collocateMYD.get('cciCtp'), c="g")
+ax.scatter(plotLat, collocateENV.get('cciCtp'), c="y")
+ax.scatter(plotLat, collocateN18.get('calipsoCtp'), c="r")
+ax.set_ylabel("CTP [hPa]")
+plt.xlabel("Latitude")
+"""save figure"""
+plt.savefig(figuresDir + 'calipsoVsCci.png', bbox_inches='tight')
 
 N18PrimaryResampled.maskAllVariables(ReflMask)
 N18SecondaryResampled.maskAllVariables(ReflMask)
