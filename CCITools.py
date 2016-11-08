@@ -2,16 +2,17 @@ from __future__ import division
 from analyseCCI import CCI
 from mpl_toolkits.basemap import Basemap, cm, latlon_default
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 import numpy as np
 from scipy import spatial
 import sys
 import numpy.ma as ma
-import math
 from netCDF4 import Dataset
 import colorsys
 import time
-from matplotlib.patches import Polygon
 from math import radians, cos, sin, asin, sqrt
+from pandas import DataFrame, Index
+import copy
 
 def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         
@@ -227,12 +228,21 @@ def resampleCCI(sourceCCI, targetGrid, sensor, lat_in = None, lon_in = None):
 
     i = 0
     for lon, lat in sourcePoints:
-        nn = tree.query((lon, lat), k = 1)
+        nn = tree.query((lon, lat), k=1)
         targetIndex = nn[1]
         for var_i, var in enumerate(variables):
+            """if data are not fill values"""
             if sourceValues[i, var_i] > -32767.0:
-                returnCount [targetIndex, var_i] += 1
-                returnValues[targetIndex, var_i] += sourceValues[i, var_i] 
+                """add value to box and increment counter"""
+                """for phase, only average non-zero values"""
+                if var is 'phase' and sourceValues[i, var_i] >= 1.:
+                    returnCount[targetIndex, var_i] += 1
+                    returnValues[targetIndex, var_i] += sourceValues[i, var_i]
+                elif var is 'phase' and sourceValues[i, var_i] < 1.:
+                    pass
+                else:
+                    returnCount [targetIndex, var_i] += 1
+                    returnValues[targetIndex, var_i] += sourceValues[i, var_i]
         i += 1
         if i % 250000 == 0:
             print ('{0}\r'.format(round(i / sourcePoints.shape[0] * 100, 1)))   
@@ -623,8 +633,9 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     cciLon = np.ma.compressed(cci.lon)
     cciLat = np.ma.compressed(cci.lat)
     cciCot = np.ma.compressed(cci.cot)
-    cciCtt = np.ma.compressed(cci.ctt)
-    cciCtp = np.ma.compressed(cci.ctp)
+    cciCtt = np.ma.compressed(cci.ctt_corrected)
+    cciCtp = np.ma.compressed(cci.ctp_corrected)
+    cciCph = np.ma.compressed(cci.phase)
 
     calLon = calipso.get('lon')
     calLat = calipso.get('lat')
@@ -649,16 +660,25 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colCot = []
     colCtt = []
     colCtp = []
+    colCph = []
     colLatCalipso = []
+    colLatCalipso1 = []
     colLonCalipso = []
     colCodCalipso = []
-    colCodCalipsoCum = []
-    colCTPCalipso = []
-    colCTTCalipso = []
+    colCTP0Calipso = []
+    colCTT0Calipso = []
+    colCTP1Calipso = []
+    colCTT1Calipso = []
+    colPhase0Calipso = []
+    colPhase1Calipso = []
+    colType0Calipso = []
+    colType1Calipso = []
 
     """ Loop over all Calipso lat/lons, """
     i = 0
+    j = 0
     for lon, lat in sourcePoints:
+        firstLayerFound = False
         """ get the nearest CCI neighbour for each Calipso pixel, """
         nn = tree.query((lon, lat), k=1)
         """ extract its index in the flattened CCI lat/lons, """
@@ -670,6 +690,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
         """If this distance is smaller than the maximum possible distance, """
         if calipsoToBox < maxDistance:
             colCodCalipsoSum = 0.
+
             """" get Calipso feature flag, looping over atmosphere layers"""
             for l in range(calFcf.shape[1]):
                 flagInt = int(calFcf[i, l])
@@ -682,23 +703,41 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                     """ sum up the layer optical depth until a threshold value is reached where we'll say the cloud top is."""
                     colCodCalipsoSum += calCodLay[i, l]
                     """If the Cod threshold has been exceeded, """
-                    if colCodCalipsoSum > 0.15:
+                    if colCodCalipsoSum > 0. and not firstLayerFound:
+                        firstLayerFound = True
                         """add data to collocated variables"""
                         colDist.append(calipsoToBox)
                         colCot.append(cciCot[targetIndex])
                         colCtt.append(cciCtt[targetIndex])
                         colCtp.append(cciCtp[targetIndex])
+                        colCph.append(cciCph[targetIndex])
                         colLatCalipso.append(lat)
                         colLonCalipso.append(lon)
                         colCodCalipso.append(calCod[i])
                         """get the phase and type"""
-                        colPhaseCalipso = int(flagBin[flagLength - 7:flagLength - 5], 2)  # 1=ice,2=water,3=mixed
-                        colTypeCalipso = int(flagBin[flagLength - 12:flagLength - 9],
-                                             2)  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
-                        colCodCalipsoCum.append(colCodCalipsoSum)
-                        colCTPCalipso.append(calCtp[i, l])
-                        colCTTCalipso.append(calCtt[i, l] + 273.15)
+                        """PHASE: 1=ice,2=water,3=ice"""
+                        colPhase0Calipso.append(int(flagBin[flagLength - 7:flagLength - 5], 2))
+                        """TYPE: 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv."""
+                        colType0Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))
+                        colCTP0Calipso.append(calCtp[i, l])
+                        colCTT0Calipso.append(calCtt[i, l] + 273.15)
+                    if colCodCalipsoSum > 1.:
+                        """add data to collocated variables"""
+                        """get the phase and type"""
+                        colPhase1Calipso.append(int(flagBin[flagLength - 7:flagLength - 5], 2))  # 1=ice,2=water,3=ice
+                        colType1Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
+                        colCTP1Calipso.append(calCtp[i, l])
+                        colCTT1Calipso.append(calCtt[i, l] + 273.15)
+                        colLatCalipso1.append(lat)
                         break
+                """if the total column COD is < 1, add nan to layer 1 variables"""
+                if l == (calFcf.shape[1] - 1):
+                        colPhase1Calipso.append(np.nan)
+                        colType1Calipso.append(np.nan)
+                        colCTP1Calipso.append(np.nan)
+                        colCTT1Calipso.append(np.nan)
+                        colLatCalipso1.append(lat)
+
         i += 1
 
     """output variables should be numpy arrays and not dictionaries"""
@@ -707,17 +746,130 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colCodCalipso = np.array(colCodCalipso)
     colCtt = np.array(colCtt)
     colCtt = np.ma.masked_greater(colCtt, 1000.)
-    colCTTCalipso = np.array(colCTTCalipso)
+    colCTTCalipso0 = np.array(colCTT0Calipso)
+    colCTTCalipso1 = np.array(colCTT1Calipso)
     colCtp = np.array(colCtp)
     colCtp = np.ma.masked_greater(colCtp, 10000.)
-    colCTPCalipso = np.array(colCTPCalipso)
+    colCTPCalipso0 = np.array(colCTP0Calipso)
+    colCTPCalipso1 = np.array(colCTP1Calipso)
     colLatCalipso = np.array(colLatCalipso)
-    out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp,
-           'calipsoCOD': colCodCalipso, 'calipsoCtt': colCTTCalipso,
-           'calipsoCtp': colCTPCalipso, 'calipsoLat': colLatCalipso}
+    colCph = np.array(colCph)
+    colPhase0Calipso = np.array(colPhase0Calipso)
+    colPhase1Calipso = np.array(colPhase1Calipso)
+    colType0Calipso = np.array(colType0Calipso)
+    colType1Calipso = np.array(colType1Calipso)
+    out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCph': colCph,
+           'calipsoCtt0': colCTTCalipso0, 'calipsoCtp0': colCTPCalipso0,
+           'calipsoPhase0': colPhase0Calipso, 'calipsoType0': colType0Calipso,
+           'calipsoCtt1': colCTTCalipso1, 'calipsoCtp1': colCTPCalipso1,
+           'calipsoPhase1': colPhase1Calipso, 'calipsoType1': colType1Calipso,
+           'calipsoLat0': colLatCalipso, 'calipsoLat1': colLatCalipso1,
+           'calipsoCOD': colCodCalipso}
     return out
 
-    
+def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresDir):
+
+    print "Plotting collocated data for Calipso and CCI."
+
+    """First copy data dictionaries so that original values are preserved when manipulating data"""
+    N18 = copy.deepcopy(collocateN18)
+    MYD = copy.deepcopy(collocateMYD)
+    ENV = copy.deepcopy(collocateENV)
+
+    """The xaxis reference is Calipso's latitude"""
+    plotLat0 = N18.get('calipsoLat0')
+    plotLat1 = N18.get('calipsoLat1')
+    """Figure settings."""
+    fig = plt.figure(figsize=(15, 10))
+    minX = plotLat0.min()
+    maxX = plotLat0.max()
+    """CTP"""
+    ax = fig.add_subplot(2, 1, 1)  # 3 plots, vertically arranged
+    ax.set_xlim([minX, maxX])
+    plt.gca().invert_yaxis()
+    ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR")
+    ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="g")
+    ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="white")
+    ax.scatter(plotLat1, N18.get('calipsoCtp1'), label="Calipso [COT > 1]", c="pink")
+    ax.scatter(plotLat0, N18.get('calipsoCtp0'), label="Calipso [COT > 0]", c="r")
+    ax.set_ylabel("CTP [hPa]")
+    leg = ax.legend(loc=3, frameon=True, fancybox=True, fontsize=11)
+    leg.get_frame().set_alpha(0.5)
+    # """CTT"""
+    # ax = fig.add_subplot(3, 1, 2)
+    # plt.gca().invert_yaxis()
+    # ax.set_xlim([minX, maxX])
+    # ax.scatter(plotLat0, N18.get('cciCtt'))
+    # ax.scatter(plotLat0, MYD.get('cciCtt'), c="g")
+    # ax.scatter(plotLat0, ENV.get('cciCtt'), c="y")
+    # ax.scatter(plotLat0, N18.get('calipsoCtt0'), c="r")
+    # ax.scatter(plotLat1, N18.get('calipsoCtt1'), c="pink")
+    # ax.set_ylabel("CTT [K]")
+    """COT"""
+    ax = fig.add_subplot(2, 1, 2)
+    ax.set_ylim([0, 50])
+    plt.gca().invert_yaxis()
+    ax.set_xlim([minX, maxX])
+    ax.scatter(plotLat0, N18.get('cciCot'))
+    ax.scatter(plotLat0, MYD.get('cciCot'), c="g")
+    ax.scatter(plotLat0, ENV.get('cciCot'), c="white")
+    ax.scatter(plotLat0, N18.get('calipsoCOD'), c="r")
+    ax.set_ylabel("COT")
+    plt.xlabel("Latitude")
+    """CLOUD PHASE TABLE"""
+    idx = Index(range(1, 6))
+    cphCal0 = np.array(N18.get('calipsoPhase0'))
+    cphCal0 = cphCal0.astype(float)
+    cphCal0[cphCal0 == 1] = 999.
+    cphCal0[cphCal0 == 2] = 1.
+    cphCal0[cphCal0 == 999.] = 2.
+    cphCal0[cphCal0 == 3] = 2.
+    cphCal0[cphCal0 == 0.] = np.nan
+    cphCal0[cphCal0 > 3.] = np.nan
+    cphCal1 = np.array(N18.get('calipsoPhase1'))
+    cphCal1 = cphCal1.astype(float)
+    cphCal1[cphCal1 == 1] = 999.
+    cphCal1[cphCal1 == 2] = 1.
+    cphCal1[cphCal1 == 999.] = 2.
+    cphCal1[cphCal1 == 3] = 2.
+    cphCal1[cphCal1 == 0.] = np.nan
+    cphCal1[cphCal1 > 3.] = np.nan
+    cphN18 = N18.get('cciCph')
+    cphN18[cphN18 == 0.] = np.nan
+    cphN18[cphN18 > 2.] = np.nan
+    cphMYD = MYD.get('cciCph')
+    cphMYD[cphMYD == 0.] = np.nan
+    cphMYD[cphMYD > 2.] = np.nan
+    cphENV = ENV.get('cciCph')
+    cphENV[cphENV == 0.] = np.nan
+    cphENV[cphENV > 2.] = np.nan
+    df = DataFrame([cphCal0, cphCal1, cphN18, cphMYD, cphENV])
+    vals = np.around(df.values, 2)
+    normal = plt.Normalize(np.nanmin(vals) - 1, np.nanmax(vals) + 1)
+    cell_colours = plt.cm.RdBu(normal(vals))
+    """cell colours scale from blue (phase = 1) to red (phase = 2)
+        i.e. green is 0, and only red and blue depend on phase:
+        red  = phase - 1.
+        blue = 1. - red"""
+    cell_colours[:,:, 0] = vals - 1.  # red
+    cell_colours[:, :, 1] = 0.        # green
+    cell_colours[:, :, 2] = 2. - vals # blue
+    cell_colours[np.isnan(vals), 0:3] = 1.
+    # cell_colours[:, :, 0] = 1.
+    # cell_colours[:, :, 1] = 1.
+    # cell_colours[:, :, 2:3] = 0.
+    row_labels = ["Calipso [COT > 0]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
+    cell_text = np.chararray((5, len(plotLat0)))
+    cell_text[:,:] = ''
+    table = plt.table(cellText=cell_text,
+                      rowLabels=row_labels,
+                      cellColours=cell_colours,
+                      bbox=[0., -0.45, 1., 0.3],
+                      loc='bottom')
+    table.set_fontsize(10)
+    """save figure"""
+    plt.savefig(figuresDir + 'calipsoVsCci.png', bbox_inches='tight')
+
     
     
 

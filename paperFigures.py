@@ -2,13 +2,14 @@
 
 from analyseCCI import CCI
 import numpy as np
+import CCITools
 from CCITools import buildRGB, plotRGB,\
-    plotRGBMulti, greatCircle, collocateCciAndCalipso
+    plotRGBMulti, greatCircle, collocateCciAndCalipso, \
+    plotCciCalipsoCollocation
 import sys
 import numpy.ma as ma
 from pyhdf.SD import SD, SDC
 from sys import argv
-import matplotlib.pyplot as plt
 
 if len(argv) > 1:
     delLon = argv[1]
@@ -71,8 +72,8 @@ secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc" #"MYD20080722_1915.nc"
-pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc" #"MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc"
+pathL2PriMYD = mainL2 + "MYD20080722_1915.nc" #"MYD_merged_20080722_19151920_primary.nc"
+pathL2SecMYD = mainL2 + "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc" #"MYD_merged_20080722_19151920_secondary.nc"
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 
@@ -88,7 +89,6 @@ print "Reading resampled N18 data"
 pathL2N18PrimaryResampled = mainL2 + N18PrimaryResampledName
 N18PrimaryResampled = CCI(pathL2N18PrimaryResampled)
 pathL2N18SecondaryResampled = mainL2 + N18SecondaryResampledName
-print pathL2N18SecondaryResampled
 N18SecondaryResampled = CCI(pathL2N18SecondaryResampled)
 
 # MODIS AQUA paths and data, RESAMPLED
@@ -118,7 +118,7 @@ boundingBox[3] = 65.
 boundingBox = [-134, -76, 52, 90]
 
 # get all variables
-MYDSlice = priMYD.getAllVariables(doSlice = True, boundingBox = boundingBox)
+MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox = boundingBox)
 secMYD.getAllVariables(doSlice = True, boundingBox = boundingBox, primary = False, boxSlice = MYDSlice)
 print "Getting all variables: N18 resampled"
 N18PrimaryResampled.getAllVariables()
@@ -198,42 +198,7 @@ collocateMYD = collocateCciAndCalipso(MYDPrimaryResampled, calipsoData, maxDista
 collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDistance)
 
 """Plot collocated data for COT, CTP, and CTT."""
-"""The xaxis reference is Calipso's latitude"""
-plotLat = collocateN18.get('calipsoLat')
-"""Figure settings."""
-fig = plt.figure(figsize=(8, 10))
-"""COT"""
-ax = fig.add_subplot(3,1,1) # 3 plots, vertically arranged
-ax.set_ylim([0, 50])
-plt.gca().invert_yaxis()
-ax.set_xlim([69.5, 75])
-ax.scatter(plotLat, collocateN18.get('cciCot'), label="AVHRR")
-ax.scatter(plotLat, collocateMYD.get('cciCot'), label="MODIS AQUA", c="g")
-ax.scatter(plotLat, collocateENV.get('cciCot'), label="AATSR", c="y")
-ax.scatter(plotLat, collocateN18.get('calipsoCOD'), label="Calipso", c="r")
-ax.set_ylabel("COT")
-ax.legend(loc=4)
-"""CTT"""
-ax = fig.add_subplot(3,1,2)
-plt.gca().invert_yaxis()
-ax.set_xlim([69.5, 75])
-ax.scatter(plotLat, collocateN18.get('cciCtt'))
-ax.scatter(plotLat, collocateMYD.get('cciCtt'), c="g")
-ax.scatter(plotLat, collocateENV.get('cciCtt'), c="y")
-ax.scatter(plotLat, collocateN18.get('calipsoCtt'), c="r")
-ax.set_ylabel("CTT [K]")
-"""CTP"""
-ax = fig.add_subplot(3,1,3)
-plt.gca().invert_yaxis()
-ax.set_xlim([69.5, 75])
-ax.scatter(plotLat, collocateN18.get('cciCtp'))
-ax.scatter(plotLat, collocateMYD.get('cciCtp'), c="g")
-ax.scatter(plotLat, collocateENV.get('cciCtp'), c="y")
-ax.scatter(plotLat, collocateN18.get('calipsoCtp'), c="r")
-ax.set_ylabel("CTP [hPa]")
-plt.xlabel("Latitude")
-"""save figure"""
-plt.savefig(figuresDir + 'calipsoVsCci.png', bbox_inches='tight')
+plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresDir)
 
 N18PrimaryResampled.maskAllVariables(ReflMask)
 N18SecondaryResampled.maskAllVariables(ReflMask)

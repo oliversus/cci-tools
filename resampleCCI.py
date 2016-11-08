@@ -1,8 +1,8 @@
-#!/home/oliver/Enthought/Canopy_64bit/User/bin/python
-#/cmsaf/nfshome/routcm/Modules_sw/python/2.7.9/bin/python
+#!/data/osus/Enthought/User/bin/python2.7
+# /home/oliver/Enthought/Canopy_64bit/User/bin/python
 
 from analyseCCI import CCI, cciGrid
-from CCITools import resampleCCI, minMax, writeCCI, plotCCI, mergeGranules
+from CCITools import resampleCCI, writeCCI
 import sys
 from sys import argv
 
@@ -17,8 +17,8 @@ if len(argv) > 1:
         print "ERROR: 3rd argument should be [True/False]."
         sys.exit()
 else:
-    delLat = 0.5
-    delLon = 0.5
+    delLat = 0.1
+    delLon = 0.1
     primary = True
 
 primaryString = "secondary"
@@ -27,10 +27,8 @@ if primary:
 print "Resampling " + primaryString + " data to " + str(delLon) + " lon x " + str(delLat) + " lat regular grid."
 
 # main path to input files
-# mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
-# mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
-mainL1 = "/home/oliver/PycharmProjects/cci-tools/data/"
-mainL2 = mainL1
+mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
+mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
 if primary:
     suffix = "_primary"
 else:
@@ -64,7 +62,6 @@ boundingBox = [-179., 0., 40, 90] #[-134, -76, 52, 85]
 print "Reading NOAA18 data"
 pathL2PriN18 = mainL2 + "20080722185100-ESACCI-L2_CLOUD-CLD_PRODUCTS-AVHRRGAC-NOAA18-fv2.0.nc"
 pathL2SecN18 = mainL2 + "ECC_GAC_avhrr_noaa18_99999_20080722T1851289Z_20080722T2046134Z.secondary.nc"
-print pathL2PriN18
 priN18 = CCI(pathL2PriN18)
 secN18 = CCI(pathL2SecN18)
 
