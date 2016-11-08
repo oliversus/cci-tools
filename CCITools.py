@@ -681,7 +681,6 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
 
     """ Loop over all Calipso lat/lons, """
     i = 0
-    j = 0
     for lon, lat in sourcePoints:
         firstLayerFound = False
         secondLayerFound = False
@@ -697,7 +696,6 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
         """If this distance is smaller than the maximum possible distance, """
         if calipsoToBox < maxDistance:
             colCodCalipsoSum = 0.
-
             """" get Calipso feature flag, looping over atmosphere layers"""
             for l in range(calFcf.shape[1]):
                 flagInt = int(calFcf[i, l])
@@ -737,7 +735,6 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colCTP1Calipso.append(calCtp[i, l])
                         colCTT1Calipso.append(calCtt[i, l] + 273.15)
                         colLatCalipso1.append(lat)
-                        #break
                     if colCodCalipsoSum > 1. and not thirdLayerFound:
                         """add data to collocated variables"""
                         """get the phase and type"""
@@ -747,9 +744,14 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colCTP2Calipso.append(calCtp[i, l])
                         colCTT2Calipso.append(calCtt[i, l] + 273.15)
                         colLatCalipso2.append(lat)
-                        #break
                 """if no additional cloud layers were found, add nan to layer variables"""
                 if l == (calFcf.shape[1] - 1):
+                    if not firstLayerFound:
+                        colPhase0Calipso.append(np.nan)
+                        colType0Calipso.append(np.nan)
+                        colCTP0Calipso.append(np.nan)
+                        colCTT0Calipso.append(np.nan)
+                        colLatCalipso.append(lat)
                     if not secondLayerFound:
                         colPhase1Calipso.append(np.nan)
                         colType1Calipso.append(np.nan)
@@ -860,24 +862,25 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     cphCal0[cphCal0 == 2] = 1.
     cphCal0[cphCal0 == 999.] = 2.
     cphCal0[cphCal0 == 3] = 2.
-    cphCal0[cphCal0 == 0.] = np.nan
-    cphCal0[cphCal0 > 3.] = np.nan
+    cphCal0[cphCal0 == 0.] = 999. #np.nan
+    # cphCal0[cphCal0 > 3.] = np.nan
     cphCal1 = np.array(N18.get('calipsoPhase1'))
     cphCal1 = cphCal1.astype(float)
     cphCal1[cphCal1 == 1] = 999.
     cphCal1[cphCal1 == 2] = 1.
     cphCal1[cphCal1 == 999.] = 2.
     cphCal1[cphCal1 == 3] = 2.
-    cphCal1[cphCal1 == 0.] = np.nan
-    cphCal1[cphCal1 > 3.] = np.nan
+    cphCal1[cphCal1 == 0.] = 999. #np.nan
+    # cphCal1[cphCal1 > 3.] = np.nan
     cphCal2 = np.array(N18.get('calipsoPhase2'))
     cphCal2 = cphCal2.astype(float)
     cphCal2[cphCal2 == 1] = 999.
     cphCal2[cphCal2 == 2] = 1.
     cphCal2[cphCal2 == 999.] = 2.
     cphCal2[cphCal2 == 3] = 2.
-    cphCal2[cphCal2 == 0.] = np.nan
-    cphCal2[cphCal2 > 3.] = np.nan
+    cphCal2[cphCal2 == 0.] = 999. #np.nan
+    # cphCal2[cphCal2 > 3.] = np.nan
+    cty = np.array(N18.get('calipsoType0'))
     cphN18 = N18.get('cciCph')
     cphN18[cphN18 == 0.] = np.nan
     cphN18[cphN18 > 2.] = np.nan
@@ -899,9 +902,8 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     cell_colours[:, :, 1] = 0.        # green
     cell_colours[:, :, 2] = 2. - vals # blue
     cell_colours[np.isnan(vals), 0:3] = 1.
-    # cell_colours[:, :, 0] = 1.
-    # cell_colours[:, :, 1] = 1.
-    # cell_colours[:, :, 2:3] = 0.
+    cell_colours[abs(cell_colours) > 900.] = 0.5
+    cell_colours[cell_colours[0:3,:,0]==0.5, 1] = 0.5
     row_labels = ["Calipso [COT > 0]", "Calipso [COT > 0.15]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
     cell_text = np.chararray((6, len(plotLat0)))
     cell_text[:,:] = ''
