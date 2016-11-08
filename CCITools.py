@@ -663,22 +663,29 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colCph = []
     colLatCalipso = []
     colLatCalipso1 = []
+    colLatCalipso2 = []
     colLonCalipso = []
     colCodCalipso = []
     colCTP0Calipso = []
     colCTT0Calipso = []
     colCTP1Calipso = []
     colCTT1Calipso = []
+    colCTP2Calipso = []
+    colCTT2Calipso = []
     colPhase0Calipso = []
     colPhase1Calipso = []
+    colPhase2Calipso = []
     colType0Calipso = []
     colType1Calipso = []
+    colType2Calipso = []
 
     """ Loop over all Calipso lat/lons, """
     i = 0
     j = 0
     for lon, lat in sourcePoints:
         firstLayerFound = False
+        secondLayerFound = False
+        thirdLayerFound = False
         """ get the nearest CCI neighbour for each Calipso pixel, """
         nn = tree.query((lon, lat), k=1)
         """ extract its index in the flattened CCI lat/lons, """
@@ -721,22 +728,40 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colType0Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))
                         colCTP0Calipso.append(calCtp[i, l])
                         colCTT0Calipso.append(calCtt[i, l] + 273.15)
-                    if colCodCalipsoSum > 1.:
+                    if colCodCalipsoSum > 0.15 and not secondLayerFound:
                         """add data to collocated variables"""
                         """get the phase and type"""
+                        secondLayerFound = True
                         colPhase1Calipso.append(int(flagBin[flagLength - 7:flagLength - 5], 2))  # 1=ice,2=water,3=ice
                         colType1Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
                         colCTP1Calipso.append(calCtp[i, l])
                         colCTT1Calipso.append(calCtt[i, l] + 273.15)
                         colLatCalipso1.append(lat)
-                        break
-                """if the total column COD is < 1, add nan to layer 1 variables"""
+                        #break
+                    if colCodCalipsoSum > 1. and not thirdLayerFound:
+                        """add data to collocated variables"""
+                        """get the phase and type"""
+                        thirdLayerFound = True
+                        colPhase2Calipso.append(int(flagBin[flagLength - 7:flagLength - 5], 2))  # 1=ice,2=water,3=ice
+                        colType2Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
+                        colCTP2Calipso.append(calCtp[i, l])
+                        colCTT2Calipso.append(calCtt[i, l] + 273.15)
+                        colLatCalipso2.append(lat)
+                        #break
+                """if no additional cloud layers were found, add nan to layer variables"""
                 if l == (calFcf.shape[1] - 1):
+                    if not secondLayerFound:
                         colPhase1Calipso.append(np.nan)
                         colType1Calipso.append(np.nan)
                         colCTP1Calipso.append(np.nan)
                         colCTT1Calipso.append(np.nan)
                         colLatCalipso1.append(lat)
+                    if not thirdLayerFound:
+                        colPhase2Calipso.append(np.nan)
+                        colType2Calipso.append(np.nan)
+                        colCTP2Calipso.append(np.nan)
+                        colCTT2Calipso.append(np.nan)
+                        colLatCalipso2.append(lat)
 
         i += 1
 
@@ -748,22 +773,28 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colCtt = np.ma.masked_greater(colCtt, 1000.)
     colCTTCalipso0 = np.array(colCTT0Calipso)
     colCTTCalipso1 = np.array(colCTT1Calipso)
+    colCTTCalipso2 = np.array(colCTT2Calipso)
     colCtp = np.array(colCtp)
     colCtp = np.ma.masked_greater(colCtp, 10000.)
     colCTPCalipso0 = np.array(colCTP0Calipso)
     colCTPCalipso1 = np.array(colCTP1Calipso)
+    colCTPCalipso2 = np.array(colCTP2Calipso)
     colLatCalipso = np.array(colLatCalipso)
     colCph = np.array(colCph)
     colPhase0Calipso = np.array(colPhase0Calipso)
     colPhase1Calipso = np.array(colPhase1Calipso)
+    colPhase2Calipso = np.array(colPhase2Calipso)
     colType0Calipso = np.array(colType0Calipso)
     colType1Calipso = np.array(colType1Calipso)
+    colType2Calipso = np.array(colType2Calipso)
     out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCph': colCph,
            'calipsoCtt0': colCTTCalipso0, 'calipsoCtp0': colCTPCalipso0,
            'calipsoPhase0': colPhase0Calipso, 'calipsoType0': colType0Calipso,
            'calipsoCtt1': colCTTCalipso1, 'calipsoCtp1': colCTPCalipso1,
            'calipsoPhase1': colPhase1Calipso, 'calipsoType1': colType1Calipso,
-           'calipsoLat0': colLatCalipso, 'calipsoLat1': colLatCalipso1,
+           'calipsoCtt2': colCTTCalipso2, 'calipsoCtp2': colCTPCalipso2,
+           'calipsoPhase2': colPhase2Calipso, 'calipsoType2': colType2Calipso,
+           'calipsoLat0': colLatCalipso, 'calipsoLat1': colLatCalipso1, 'calipsoLat2': colLatCalipso2,
            'calipsoCOD': colCodCalipso}
     return out
 
@@ -779,6 +810,7 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     """The xaxis reference is Calipso's latitude"""
     plotLat0 = N18.get('calipsoLat0')
     plotLat1 = N18.get('calipsoLat1')
+    plotLat2 = N18.get('calipsoLat2')
     """Figure settings."""
     fig = plt.figure(figsize=(15, 10))
     minX = plotLat0.min()
@@ -790,10 +822,14 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR")
     ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="g")
     ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="white")
-    ax.scatter(plotLat1, N18.get('calipsoCtp1'), label="Calipso [COT > 1]", c="pink")
+    ax.scatter(plotLat2, N18.get('calipsoCtp2'), label="Calipso [COT > 1]", c="pink")
     ax.scatter(plotLat0, N18.get('calipsoCtp0'), label="Calipso [COT > 0]", c="r")
     ax.set_ylabel("CTP [hPa]")
-    leg = ax.legend(loc=3, frameon=True, fancybox=True, fontsize=11)
+    handles, labels = ax.get_legend_handles_labels()
+    order=[0,1,2,4,3]
+    labels = [ labels[i] for i in order]
+    handles = [handles[i] for i in order]
+    leg = ax.legend(handles=handles, labels=labels, loc=3, frameon=True, fancybox=True, fontsize=11)
     leg.get_frame().set_alpha(0.5)
     # """CTT"""
     # ax = fig.add_subplot(3, 1, 2)
@@ -834,6 +870,14 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     cphCal1[cphCal1 == 3] = 2.
     cphCal1[cphCal1 == 0.] = np.nan
     cphCal1[cphCal1 > 3.] = np.nan
+    cphCal2 = np.array(N18.get('calipsoPhase2'))
+    cphCal2 = cphCal2.astype(float)
+    cphCal2[cphCal2 == 1] = 999.
+    cphCal2[cphCal2 == 2] = 1.
+    cphCal2[cphCal2 == 999.] = 2.
+    cphCal2[cphCal2 == 3] = 2.
+    cphCal2[cphCal2 == 0.] = np.nan
+    cphCal2[cphCal2 > 3.] = np.nan
     cphN18 = N18.get('cciCph')
     cphN18[cphN18 == 0.] = np.nan
     cphN18[cphN18 > 2.] = np.nan
@@ -843,7 +887,7 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     cphENV = ENV.get('cciCph')
     cphENV[cphENV == 0.] = np.nan
     cphENV[cphENV > 2.] = np.nan
-    df = DataFrame([cphCal0, cphCal1, cphN18, cphMYD, cphENV])
+    df = DataFrame([cphCal0, cphCal1, cphCal2, cphN18, cphMYD, cphENV])
     vals = np.around(df.values, 2)
     normal = plt.Normalize(np.nanmin(vals) - 1, np.nanmax(vals) + 1)
     cell_colours = plt.cm.RdBu(normal(vals))
@@ -858,8 +902,8 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     # cell_colours[:, :, 0] = 1.
     # cell_colours[:, :, 1] = 1.
     # cell_colours[:, :, 2:3] = 0.
-    row_labels = ["Calipso [COT > 0]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
-    cell_text = np.chararray((5, len(plotLat0)))
+    row_labels = ["Calipso [COT > 0]", "Calipso [COT > 0.15]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
+    cell_text = np.chararray((6, len(plotLat0)))
     cell_text[:,:] = ''
     table = plt.table(cellText=cell_text,
                       rowLabels=row_labels,
