@@ -2,14 +2,15 @@
 
 from analyseCCI import CCI
 import numpy as np
-import CCITools
 from CCITools import buildRGB, plotRGB,\
     plotRGBMulti, greatCircle, collocateCciAndCalipso, \
-    plotCciCalipsoCollocation
+    plotCciCalipsoCollocation, plotCCI, minMax
 import sys
 import numpy.ma as ma
 from pyhdf.SD import SD, SDC
 from sys import argv
+import math
+import matplotlib.pyplot as plt
 
 if len(argv) > 1:
     delLon = argv[1]
@@ -72,8 +73,8 @@ secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD20080722_1915.nc" #"MYD_merged_20080722_19151920_primary.nc"
-pathL2SecMYD = mainL2 + "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc" #"MYD_merged_20080722_19151920_secondary.nc"
+pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc" #"MYD20080722_1915.nc"
+pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc" #"MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc"
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 
@@ -238,36 +239,36 @@ if True:
         # linear regression of RES with COT or TIMEDIFF
             # scatter plot RES vs COT/TIMEDIFF?
 
+sys.exit()
+
 print "Plotting data."
-variable = "cth"
+variable = "phase"
 
 # 1a) RGB, ideally highly resolved MODIS with 0.6, 0.8, and 1.6 (1.6 has missing scan lines though) 
 
 # 1b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
 
-
-sys.exit()
-plotCCI(N18Resampled, MYDResampled, boundingBox, centrePoint, variable, 
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
         'NOAA18', mask = AllSensorsMaskCombined) 
-print "N18 " + variable + " mean = " + str(round(getattr(N18Resampled, variable).mean(), 2))
-print "N18 " + variable + " stdev = " + str(round(getattr(N18Resampled, variable).std(), 2))
-plotCCI(N18Resampled, MYDResampled, boundingBox, centrePoint, variable, 
+print "N18 " + variable + " mean = " + str(round(getattr(N18PrimaryResampled, variable).mean(), 2))
+print "N18 " + variable + " stdev = " + str(round(getattr(N18PrimaryResampled, variable).std(), 2))
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
         'MYD', mask = AllSensorsMaskCombined) 
-print "MYD " + variable + " mean = " + str(round(getattr(MYDResampled, variable).mean(), 2))
-print "MYD " + variable + " stdev = " + str(round(getattr(MYDResampled, variable).std(), 2))
-input = abs(getattr(MYDResampled, variable) - getattr(N18Resampled, variable))
+print "MYD " + variable + " mean = " + str(round(getattr(MYDPrimaryResampled, variable).mean(), 2))
+print "MYD " + variable + " stdev = " + str(round(getattr(MYDPrimaryResampled, variable).std(), 2))
+input = abs(getattr(MYDPrimaryResampled, variable) - getattr(N18PrimaryResampled, variable))
 print [round(x, 2) for x in minMax(input)]
-plotCCI(N18Resampled, MYDResampled, boundingBox, centrePoint, variable, 
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
         'MYDResampledMinusNOAA18', input = input, mask = input.mask) 
 input.mask = input.mask + ma.masked_greater(input, input.mean() + input.std() * 2).mask
-plotCCI(N18Resampled, MYDResampled, boundingBox, centrePoint, variable, 
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
         'MYDResampledMinusNOAA18', input = input, mask = input.mask) 
 print "MYD-N18 " + variable + " mean = " + str(round(input.mean(), 2))
 print "MYD-N18 " + variable + " stdev = " + str(round(input.std(), 2))
-# plt.scatter(MYDResampled.ctp, input)
+# plt.scatter(MYDPrimaryResampled.ctp, input)
 # plt.draw()
 # plt.scatter(timeDiff, input)
 # plt.draw()
 plt.show()
 
-stats.ttest_ind(getattr(N18Resampled, variable).ravel(), getattr(MYDResampled, variable).ravel())
+#stats.ttest_ind(getattr(N18PrimaryResampled, variable).ravel(), getattr(MYDPrimaryResampled, variable).ravel())

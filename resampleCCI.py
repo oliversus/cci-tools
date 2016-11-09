@@ -67,8 +67,8 @@ secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD20080722_1915.nc" #"MYD_merged_20080722_19151920_primary.nc"
-pathL2SecMYD = mainL2 + "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc" #"MYD_merged_20080722_19151920_secondary.nc"
+pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc" #"MYD20080722_1915.nc"
+pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc" # "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc"
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 # pathL2PriMYD2 = mainL2 + "MYD20080722_1920.nc"

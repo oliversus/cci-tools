@@ -66,12 +66,12 @@ def writeCCI(path, data, targetGrid, primary, platform = "N18"):
 
         cc_total = ncOut.createVariable("cc_total","f8",("along_track", "across_track"))
         cc_total[:,:] = data[:,:,12]
-        
-        cccot = ncOut.createVariable("cccot_pre","f8",("along_track", "across_track"))
-        cccot[:,:] = data[:,:,13]
-        
+
         phase = ncOut.createVariable("phase","f8",("along_track", "across_track"))
-        phase[:,:] = data[:,:,14]
+        phase[:,:] = data[:,:,13]
+
+        cldtype = ncOut.createVariable("cldtype", "f8", ("along_track", "across_track"))
+        cldtype[:, :] = data[:, :, 14]
 
     else:
 
@@ -195,7 +195,7 @@ def resampleCCI(sourceCCI, targetGrid, sensor, lat_in = None, lon_in = None):
     if primary:
         variables = ["time", "solar_zenith_view_no1", "satellite_zenith_view_no1", "cot", "cer", "cwp",
                      "ctp", "ctp_corrected", "cth", "cth_corrected", "ctt", "ctt_corrected", "cc_total",
-                     "cccot_pre", "phase"]
+                     "phase", "cldtype"]
     else:
         if sensor == "N18":
             variables = ["albedo_in_channel_no_1", "albedo_in_channel_no_2", "albedo_in_channel_no_3",
@@ -636,6 +636,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     cciCtt = np.ma.compressed(cci.ctt_corrected)
     cciCtp = np.ma.compressed(cci.ctp_corrected)
     cciCph = np.ma.compressed(cci.phase)
+    cciCty = np.ma.compressed(cci.cldtype)
 
     calLon = calipso.get('lon')
     calLat = calipso.get('lat')
@@ -661,6 +662,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colCtt = []
     colCtp = []
     colCph = []
+    colCty = []
     colLatCalipso = []
     colLatCalipso1 = []
     colLatCalipso2 = []
@@ -716,6 +718,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colCtt.append(cciCtt[targetIndex])
                         colCtp.append(cciCtp[targetIndex])
                         colCph.append(cciCph[targetIndex])
+                        colCty.append(cciCty[targetIndex])
                         colLatCalipso.append(lat)
                         colLonCalipso.append(lon)
                         colCodCalipso.append(calCod[i])
@@ -783,13 +786,14 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colCTPCalipso2 = np.array(colCTP2Calipso)
     colLatCalipso = np.array(colLatCalipso)
     colCph = np.array(colCph)
+    colCty = np.array(colCty)
     colPhase0Calipso = np.array(colPhase0Calipso)
     colPhase1Calipso = np.array(colPhase1Calipso)
     colPhase2Calipso = np.array(colPhase2Calipso)
     colType0Calipso = np.array(colType0Calipso)
     colType1Calipso = np.array(colType1Calipso)
     colType2Calipso = np.array(colType2Calipso)
-    out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCph': colCph,
+    out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCph': colCph, 'cciCty': colCty,
            'calipsoCtt0': colCTTCalipso0, 'calipsoCtp0': colCTPCalipso0,
            'calipsoPhase0': colPhase0Calipso, 'calipsoType0': colType0Calipso,
            'calipsoCtt1': colCTTCalipso1, 'calipsoCtp1': colCTPCalipso1,
@@ -880,16 +884,24 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     cphCal2[cphCal2 == 3] = 2.
     cphCal2[cphCal2 == 0.] = 999. #np.nan
     # cphCal2[cphCal2 > 3.] = np.nan
-    cty = np.array(N18.get('calipsoType0'))
+    cty0 = np.array(N18.get('calipsoType0'))
+    cty1 = np.array(N18.get('calipsoType1'))
+    cty2 = np.array(N18.get('calipsoType2'))
     cphN18 = N18.get('cciCph')
     cphN18[cphN18 == 0.] = np.nan
     cphN18[cphN18 > 2.] = np.nan
+    ctyN18 = np.round(N18.get('cciCty'), 0)
+    ctyN18[ctyN18 == 0.] = np.nan
     cphMYD = MYD.get('cciCph')
     cphMYD[cphMYD == 0.] = np.nan
     cphMYD[cphMYD > 2.] = np.nan
+    ctyMYD = str(np.round(MYD.get('cciCty'), 0))
+    ctyMYD[ctyMYD == 0.] = '' #np.nan
     cphENV = ENV.get('cciCph')
     cphENV[cphENV == 0.] = np.nan
     cphENV[cphENV > 2.] = np.nan
+    ctyENV = np.round(ENV.get('cciCty'), 0)
+    ctyENV[ctyENV == 0.] = np.nan
     df = DataFrame([cphCal0, cphCal1, cphCal2, cphN18, cphMYD, cphENV])
     vals = np.around(df.values, 2)
     normal = plt.Normalize(np.nanmin(vals) - 1, np.nanmax(vals) + 1)
@@ -904,14 +916,28 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     cell_colours[np.isnan(vals), 0:3] = 1.
     cell_colours[abs(cell_colours) > 900.] = 0.5
     cell_colours[cell_colours[0:3,:,0]==0.5, 1] = 0.5
+    #foo = np.ones((1,120,4))
+    #cell_colours = np.vstack((foo, cell_colours))
     row_labels = ["Calipso [COT > 0]", "Calipso [COT > 0.15]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
-    cell_text = np.chararray((6, len(plotLat0)))
-    cell_text[:,:] = ''
+    cell_text = np.chararray((len(row_labels), len(plotLat0)))
+    cell_text[0,] = cty0
+    cell_text[1,] = cty1
+    cell_text[2,] = cty2
+    cell_text[3,] = ctyN18
+    cell_text[4,] = ctyMYD
+    cell_text[5,] = ctyENV
     table = plt.table(cellText=cell_text,
                       rowLabels=row_labels,
                       cellColours=cell_colours,
                       bbox=[0., -0.45, 1., 0.3],
                       loc='bottom')
+    table.set_fontsize(10)
+    # iterate through cells of a table
+    table_props = table.properties()
+    table_cells = table_props['child_artists']
+    for cell in table_cells:
+        cell._text.set_color('white')
+    table._cells[(1, 0)]._text.set_color('black')
     table.set_fontsize(10)
     """save figure"""
     plt.savefig(figuresDir + 'calipsoVsCci.png', bbox_inches='tight')
