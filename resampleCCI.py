@@ -2,7 +2,7 @@
 # /home/oliver/Enthought/Canopy_64bit/User/bin/python
 
 from analyseCCI import CCI, cciGrid
-from CCITools import resampleCCI, writeCCI
+from CCITools import resampleCCI, writeCCI, greatCircle
 import sys
 from sys import argv
 
@@ -101,33 +101,46 @@ secENV.reflec_nadir_0670 /= secENV.reflec_nadir_0670.max()
 secENV.reflec_nadir_0870 /= secENV.reflec_nadir_0870.max()
 secENV.reflec_nadir_1600 /= secENV.reflec_nadir_1600.max()
 
+"""the maximum distance between CCI and a grid box center is given by
+    the great circle distance between the grid box center and one of its corners
+    which is half of the grid box diagonal, which can be calculated with Pythagoras"""
+"""The lat/lon spacing and the grid box longitude/latitude width"""
+boxLonWidth = delLon * greatCircle(centrePoint[1], centrePoint[0], centrePoint[1] + 1., centrePoint[0])
+boxLatWidth = delLat * greatCircle(centrePoint[1], centrePoint[0], centrePoint[1], centrePoint[0] + 1.)
+"""give the grid box diagonal"""
+boxDiag = (boxLonWidth**2 + boxLatWidth**2)**0.5
+"""half of which is the maximum distance of CCI to any grid box center"""
+maxDistance = boxDiag / 2.
+"""add 10 percent to this distance so that """
+maxDistance *= 1.1
+
 # resample to N18 if requested
 print "Resampling data."
 # primary
 if primary:
-    resampledData = resampleCCI(priMYD, targetGrid, "MYD")
+    resampledData = resampleCCI(priMYD, targetGrid, "MYD", maxDistance)
     fileName = mainL2 + outNameMYD + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
-    resampledData = resampleCCI(priN18, targetGrid, "N18")
+    resampledData = resampleCCI(priN18, targetGrid, "N18", maxDistance)
     fileName = mainL2 + outNameN18 + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
-    resampledData = resampleCCI(priENV, targetGrid, "ENV")
+    resampledData = resampleCCI(priENV, targetGrid, "ENV", maxDistance)
     fileName = mainL2 + outNameENV + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
 # secondary
 else:
-    resampledData = resampleCCI(secMYD, targetGrid, "MYD", lat_in = priMYD.lat, lon_in = priMYD.lon) 
+    resampledData = resampleCCI(secMYD, targetGrid, "MYD", maxDistance, lat_in = priMYD.lat, lon_in = priMYD.lon)
     fileName = mainL2 + outNameMYD + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary, platform = "MYD")
-    resampledData = resampleCCI(secN18, targetGrid, "N18", lat_in = priN18.lat, lon_in = priN18.lon) 
+    resampledData = resampleCCI(secN18, targetGrid, "N18", maxDistance, lat_in = priN18.lat, lon_in = priN18.lon)
     fileName = mainL2 + outNameN18 + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary, platform = "N18")
-    resampledData = resampleCCI(secENV, targetGrid, "ENV", lat_in = secENV.lat, lon_in = secENV.lon)
+    resampledData = resampleCCI(secENV, targetGrid, "ENV", maxDistance, lat_in = secENV.lat, lon_in = secENV.lon)
     fileName = mainL2 + outNameENV + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary, platform = "ENV")

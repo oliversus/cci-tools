@@ -174,7 +174,7 @@ def greatCircle(lon1, lat1, lon2, lat2):
     r = 6371 # Radius of earth in kilometers. Use 3956 for miles
     return c * r
 
-def resampleCCI(sourceCCI, targetGrid, sensor, lat_in = None, lon_in = None):
+def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_in = None):
     # aim: resample CCI L2 orbit data from orbit projection to regular lat/lon grid
     # grid dimension and resolution is user defined
     # approach: average all pixel values whose centre are within grid box    
@@ -230,25 +230,31 @@ def resampleCCI(sourceCCI, targetGrid, sensor, lat_in = None, lon_in = None):
     for lon, lat in sourcePoints:
         nn = tree.query((lon, lat), k=1)
         targetIndex = nn[1]
-        for var_i, var in enumerate(variables):
-            """if data are not fill values"""
-            if sourceValues[i, var_i] > -32767.0:
-                """add value to box and increment counter"""
-                """for phase, only average non-zero values"""
-                if var is 'phase' and sourceValues[i, var_i] >= 1.:
-                    returnCount[targetIndex, var_i] += 1
-                    returnValues[targetIndex, var_i] += sourceValues[i, var_i]
-                elif var is 'phase' and sourceValues[i, var_i] < 1.:
-                    pass
-                else:
-                    returnCount [targetIndex, var_i] += 1
-                    returnValues[targetIndex, var_i] += sourceValues[i, var_i]
+        """Check with target grid lat/lons, """
+        lonNN = targetGrid.lon[targetIndex]
+        latNN = targetGrid.lat[targetIndex]
+        """ that the great circle distance between CCI L2 lat/lon and target grid box lat/lon is lower than a threshold value (i.e. L2 pixel is within grid box)."""
+        L2ToBox = greatCircle(lon, lat, lonNN, latNN)
+        if L2ToBox < maxDistance:
+            for var_i, var in enumerate(variables):
+                """if data are not fill values"""
+                if sourceValues[i, var_i] > -32767.0:
+                    """add value to box and increment counter"""
+                    """for phase, only average non-zero values"""
+                    if var is 'phase' and sourceValues[i, var_i] >= 1.:
+                        returnCount[targetIndex, var_i] += 1
+                        returnValues[targetIndex, var_i] += sourceValues[i, var_i]
+                    elif var is 'phase' and sourceValues[i, var_i] < 1.:
+                        pass
+                    else:
+                        returnCount [targetIndex, var_i] += 1
+                        returnValues[targetIndex, var_i] += sourceValues[i, var_i]
         i += 1
         if i % 250000 == 0:
             print ('{0}\r'.format(round(i / sourcePoints.shape[0] * 100, 1)))   
 
     returnCountMasked = ma.masked_values(returnCount, 0.)
-    out = returnValues / returnCountMasked
+    out = returnCountMasked #returnValues / returnCountMasked
     out = out.reshape(targetGrid.lat.shape[0], targetGrid.lat.shape[1], len(variables))
 
     return out
