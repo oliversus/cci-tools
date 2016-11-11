@@ -225,14 +225,16 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
                  
     returnValues = np.zeros((targetPoints.shape[0], len(variables)))
     returnCount  = np.zeros((targetPoints.shape[0], len(variables)))
+    targetLon = targetGrid.lon.flatten()
+    targetLat = targetGrid.lat.flatten()
 
     i = 0
     for lon, lat in sourcePoints:
         nn = tree.query((lon, lat), k=1)
         targetIndex = nn[1]
         """Check with target grid lat/lons, """
-        lonNN = targetGrid.lon[targetIndex]
-        latNN = targetGrid.lat[targetIndex]
+        lonNN = targetLon[targetIndex]
+        latNN = targetLat[targetIndex]
         """ that the great circle distance between CCI L2 lat/lon and target grid box lat/lon is lower than a threshold value (i.e. L2 pixel is within grid box)."""
         L2ToBox = greatCircle(lon, lat, lonNN, latNN)
         if L2ToBox < maxDistance:
