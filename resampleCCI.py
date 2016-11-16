@@ -2,9 +2,10 @@
 # /home/oliver/Enthought/Canopy_64bit/User/bin/python
 
 from analyseCCI import CCI, cciGrid
-from CCITools import resampleCCI, writeCCI, greatCircle
+from CCITools import resampleCCI, writeCCI, greatCircle, randomMode
 import sys
 from sys import argv
+import numpy as np
 
 if len(argv) > 1:
     delLon = float(argv[1])
@@ -17,8 +18,8 @@ if len(argv) > 1:
         print "ERROR: 3rd argument should be [True/False]."
         sys.exit()
 else:
-    delLat = 0.1
-    delLon = 0.1
+    delLat = 0.5
+    delLon = 0.5
     primary = True
 
 primaryString = "secondary"

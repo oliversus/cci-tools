@@ -73,6 +73,9 @@ def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         cldtype = ncOut.createVariable("cldtype", "f8", ("along_track", "across_track"))
         cldtype[:, :] = data[:, :, 14]
 
+        nisemask = ncOut.createVariable("nisemask", "f8", ("along_track", "across_track"))
+        nisemask[:, :] = data[:, :, 15]
+
     else:
 
         if platform == "N18":
@@ -195,7 +198,7 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
     if primary:
         variables = ["time", "solar_zenith_view_no1", "satellite_zenith_view_no1", "cot", "cer", "cwp",
                      "ctp", "ctp_corrected", "cth", "cth_corrected", "ctt", "ctt_corrected", "cc_total",
-                     "phase", "cldtype"]
+                     "phase", "cldtype", "nisemask"]
     else:
         if sensor == "N18":
             variables = ["albedo_in_channel_no_1", "albedo_in_channel_no_2", "albedo_in_channel_no_3",
@@ -225,6 +228,7 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
                  
     returnValues = np.zeros((targetPoints.shape[0], len(variables)))
     returnCount  = np.zeros((targetPoints.shape[0], len(variables)))
+    returnCldType = [[] for i in range(targetPoints.shape[0])]
     targetLon = targetGrid.lon.flatten()
     targetLat = targetGrid.lat.flatten()
 
@@ -248,6 +252,10 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
                         returnValues[targetIndex, var_i] += sourceValues[i, var_i]
                     elif var is 'phase' and sourceValues[i, var_i] < 1.:
                         pass
+                    elif var is 'cldtype' and sourceValues[i, var_i] >= 1.:
+                        returnCldType[targetIndex].append(sourceValues[i, var_i])
+                    elif var is 'cldtype' and sourceValues[i, var_i] < 1.:
+                        pass
                     else:
                         returnCount [targetIndex, var_i] += 1
                         returnValues[targetIndex, var_i] += sourceValues[i, var_i]
@@ -256,7 +264,19 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
             print ('{0}\r'.format(round(i / sourcePoints.shape[0] * 100, 1)))   
 
     returnCountMasked = ma.masked_values(returnCount, 0.)
-    out = returnCountMasked #returnValues / returnCountMasked
+    out = returnValues / returnCountMasked
+    for i in range(len(returnCldType)):
+        phase = round(out[i, variables.index('phase')], 0)
+        cldType = np.array(returnCldType[i]).astype(int)
+        if phase == 1.:
+            cldType = cldType[cldType < 5]
+            out[i, variables.index('cldtype')] = randomMode(cldType)
+        elif phase == 2:
+            cldType = cldType[cldType >= 5]
+            out[i, variables.index('cldtype')] = randomMode(cldType)
+        else:
+            pass
+
     out = out.reshape(targetGrid.lat.shape[0], targetGrid.lat.shape[1], len(variables))
 
     return out
@@ -393,7 +413,7 @@ def plotCCI(priN18, priMYD, boundingBox, centrePoint, variable, platform,
                  width = 4000000, height = 4000000,
                  res = 'l',
                  llcrnrlat = llcrnrlat, urcrnrlat = urcrnrlat, llcrnrlon = -180, urcrnrlon = urcrnrlon,
-                 cmin = cmin, cmax = cmin,
+                 cmin = cmin, cmax = cmax,
                  mask = mask)
     plt.draw()
 
@@ -645,6 +665,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     cciCtp = np.ma.compressed(cci.ctp_corrected)
     cciCph = np.ma.compressed(cci.phase)
     cciCty = np.ma.compressed(cci.cldtype)
+    cciNise = np.ma.compressed(cci.nisemask)
 
     calLon = calipso.get('lon')
     calLat = calipso.get('lat')
@@ -653,6 +674,9 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     calCtt = calipso.get('ctt')
     calCtp = calipso.get('ctp')
     calFcf = calipso.get('fcf')
+    calIce = calipso.get('ice')
+    calTop = calipso.get('top')
+    calTyp = calipso.get('typ')
 
     """ for each calipso pixel lat/lon,"""
     print "building source points"
@@ -671,6 +695,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colCtp = []
     colCph = []
     colCty = []
+    colNise = []
     colLatCalipso = []
     colLatCalipso1 = []
     colLatCalipso2 = []
@@ -688,6 +713,9 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colType0Calipso = []
     colType1Calipso = []
     colType2Calipso = []
+    colIceCalipso = []
+    colTopCalipso = []
+    colTypCalipso = []
 
     """ Loop over all Calipso lat/lons, """
     i = 0
@@ -727,6 +755,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colCtp.append(cciCtp[targetIndex])
                         colCph.append(cciCph[targetIndex])
                         colCty.append(cciCty[targetIndex])
+                        colNise.append(cciNise[targetIndex])
                         colLatCalipso.append(lat)
                         colLonCalipso.append(lon)
                         colCodCalipso.append(calCod[i])
@@ -737,6 +766,9 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colType0Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))
                         colCTP0Calipso.append(calCtp[i, l])
                         colCTT0Calipso.append(calCtt[i, l] + 273.15)
+                        colIceCalipso.append(calIce[i, l])
+                        colTopCalipso.append(calTop[i, l])
+                        colTypCalipso.append(calTyp[i, l])
                     if colCodCalipsoSum > 0.15 and not secondLayerFound:
                         """add data to collocated variables"""
                         """get the phase and type"""
@@ -795,13 +827,17 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colLatCalipso = np.array(colLatCalipso)
     colCph = np.array(colCph)
     colCty = np.array(colCty)
+    colNise = np.array(colNise)
     colPhase0Calipso = np.array(colPhase0Calipso)
     colPhase1Calipso = np.array(colPhase1Calipso)
     colPhase2Calipso = np.array(colPhase2Calipso)
     colType0Calipso = np.array(colType0Calipso)
     colType1Calipso = np.array(colType1Calipso)
     colType2Calipso = np.array(colType2Calipso)
-    out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCph': colCph, 'cciCty': colCty,
+    colIceCalipso = np.array(colIceCalipso)
+    colTopCalipso = np.array(colTopCalipso)
+    colTypCalipso = np.array(colTypCalipso)
+    out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCph': colCph, 'cciCty': colCty, 'cciNise': colNise,
            'calipsoCtt0': colCTTCalipso0, 'calipsoCtp0': colCTPCalipso0,
            'calipsoPhase0': colPhase0Calipso, 'calipsoType0': colType0Calipso,
            'calipsoCtt1': colCTTCalipso1, 'calipsoCtp1': colCTPCalipso1,
@@ -809,7 +845,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
            'calipsoCtt2': colCTTCalipso2, 'calipsoCtp2': colCTPCalipso2,
            'calipsoPhase2': colPhase2Calipso, 'calipsoType2': colType2Calipso,
            'calipsoLat0': colLatCalipso, 'calipsoLat1': colLatCalipso1, 'calipsoLat2': colLatCalipso2,
-           'calipsoCOD': colCodCalipso}
+           'calipsoCOD': colCodCalipso, 'calipsoIce': colIceCalipso, 'calipsoTop': colTopCalipso, 'calipsoTyp': colTypCalipso}
     return out
 
 def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresDir):
@@ -823,7 +859,6 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
 
     """The xaxis reference is Calipso's latitude"""
     plotLat0 = N18.get('calipsoLat0')
-    plotLat1 = N18.get('calipsoLat1')
     plotLat2 = N18.get('calipsoLat2')
     """Figure settings."""
     fig = plt.figure(figsize=(15, 10))
@@ -845,53 +880,60 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     handles = [handles[i] for i in order]
     leg = ax.legend(handles=handles, labels=labels, loc=3, frameon=True, fancybox=True, fontsize=11)
     leg.get_frame().set_alpha(0.5)
-    # """CTT"""
-    # ax = fig.add_subplot(3, 1, 2)
-    # plt.gca().invert_yaxis()
-    # ax.set_xlim([minX, maxX])
-    # ax.scatter(plotLat0, N18.get('cciCtt'))
-    # ax.scatter(plotLat0, MYD.get('cciCtt'), c="g")
-    # ax.scatter(plotLat0, ENV.get('cciCtt'), c="y")
-    # ax.scatter(plotLat0, N18.get('calipsoCtt0'), c="r")
-    # ax.scatter(plotLat1, N18.get('calipsoCtt1'), c="pink")
-    # ax.set_ylabel("CTT [K]")
     """COT"""
     ax = fig.add_subplot(2, 1, 2)
     ax.set_ylim([0, 50])
     plt.gca().invert_yaxis()
     ax.set_xlim([minX, maxX])
-    ax.scatter(plotLat0, N18.get('cciCot'))
-    ax.scatter(plotLat0, MYD.get('cciCot'), c="g")
-    ax.scatter(plotLat0, ENV.get('cciCot'), c="white")
-    ax.scatter(plotLat0, N18.get('calipsoCOD'), c="r")
+    ax.scatter(plotLat0, N18.get('cciCot'), zorder=10)
+    ax.scatter(plotLat0, ENV.get('cciCot'), c="white", zorder=10)
+    ax.scatter(plotLat0, MYD.get('cciCot'), c="g", zorder=10)
+    ax.scatter(plotLat0, N18.get('calipsoCOD'), c="r", zorder=10)
     ax.set_ylabel("COT")
     plt.xlabel("Latitude")
+    """Surface elevation, snow/ice, surface type"""
+    topography = N18.get('calipsoTop') * 1000.
+    ice = N18.get('calipsoIce')
+    iceNise = N18.get('cciNise')
+    surface_type = N18.get('calipsoTyp')
+    ice_masked = ma.masked_inside(ice, 1, 101)
+    topography_masked = topography[ice_masked.mask].copy()
+    lat_masked = plotLat0[ice_masked.mask].copy()
+    ax2 = ax.twinx()
+    ax2.set_ylabel("surface elevation [m]")
+    ax2.set_xlim([minX, maxX])
+    ax2.set_ylim(0, 2000.)
+    yticks = np.arange(0, 600, 100)
+    lw = 5.
+    ax2.fill_between(plotLat0, topography+10, facecolor="green", alpha=0.5, zorder=1, linewidth=lw, edgecolor="green")
+    ax2.plot(plotLat0[surface_type == 17], topography[surface_type == 17], c="blue", linewidth=lw, zorder=2)
+    ax2.plot(plotLat0[ice == 101], topography[ice == 101]+10, c="grey", linewidth=lw, zorder=2)
+    ax2.plot(plotLat0[(ice > 0) & (ice < 101)], topography[(ice > 0) & (ice < 101)]+10, c="grey", linewidth=lw, zorder=2)
+    ax2.set_yticks(yticks)
+    #ax2.plot(plotLat0[iceNise != 0.], topography[iceNise != 0.], c="red", linewidth=3, zorder=2)
+
     """CLOUD PHASE TABLE"""
-    idx = Index(range(1, 6))
     cphCal0 = np.array(N18.get('calipsoPhase0'))
     cphCal0 = cphCal0.astype(float)
     cphCal0[cphCal0 == 1] = 999.
     cphCal0[cphCal0 == 2] = 1.
     cphCal0[cphCal0 == 999.] = 2.
     cphCal0[cphCal0 == 3] = 2.
-    cphCal0[cphCal0 == 0.] = 999. #np.nan
-    # cphCal0[cphCal0 > 3.] = np.nan
+    cphCal0[cphCal0 == 0.] = 999.
     cphCal1 = np.array(N18.get('calipsoPhase1'))
     cphCal1 = cphCal1.astype(float)
     cphCal1[cphCal1 == 1] = 999.
     cphCal1[cphCal1 == 2] = 1.
     cphCal1[cphCal1 == 999.] = 2.
     cphCal1[cphCal1 == 3] = 2.
-    cphCal1[cphCal1 == 0.] = 999. #np.nan
-    # cphCal1[cphCal1 > 3.] = np.nan
+    cphCal1[cphCal1 == 0.] = 999.
     cphCal2 = np.array(N18.get('calipsoPhase2'))
     cphCal2 = cphCal2.astype(float)
     cphCal2[cphCal2 == 1] = 999.
     cphCal2[cphCal2 == 2] = 1.
     cphCal2[cphCal2 == 999.] = 2.
     cphCal2[cphCal2 == 3] = 2.
-    cphCal2[cphCal2 == 0.] = 999. #np.nan
-    # cphCal2[cphCal2 > 3.] = np.nan
+    cphCal2[cphCal2 == 0.] = 999.
     cty0 = np.array(N18.get('calipsoType0'))
     cty1 = np.array(N18.get('calipsoType1'))
     cty2 = np.array(N18.get('calipsoType2'))
@@ -903,8 +945,8 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     cphMYD = MYD.get('cciCph')
     cphMYD[cphMYD == 0.] = np.nan
     cphMYD[cphMYD > 2.] = np.nan
-    ctyMYD = str(np.round(MYD.get('cciCty'), 0))
-    ctyMYD[ctyMYD == 0.] = '' #np.nan
+    ctyMYD = np.round(MYD.get('cciCty'), 0)
+    ctyMYD[ctyMYD == 0.] = np.nan
     cphENV = ENV.get('cciCph')
     cphENV[cphENV == 0.] = np.nan
     cphENV[cphENV > 2.] = np.nan
@@ -924,8 +966,6 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     cell_colours[np.isnan(vals), 0:3] = 1.
     cell_colours[abs(cell_colours) > 900.] = 0.5
     cell_colours[cell_colours[0:3,:,0]==0.5, 1] = 0.5
-    #foo = np.ones((1,120,4))
-    #cell_colours = np.vstack((foo, cell_colours))
     row_labels = ["Calipso [COT > 0]", "Calipso [COT > 0.15]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
     cell_text = np.chararray((len(row_labels), len(plotLat0)))
     cell_text[0,] = cty0
@@ -945,10 +985,28 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     table_cells = table_props['child_artists']
     for cell in table_cells:
         cell._text.set_color('white')
-    table._cells[(1, 0)]._text.set_color('black')
-    table.set_fontsize(10)
+    table._cells[(0, -1)]._text.set_color('black')
+    table._cells[(1, -1)]._text.set_color('black')
+    table._cells[(2, -1)]._text.set_color('black')
+    table._cells[(3, -1)]._text.set_color('black')
+    table._cells[(4, -1)]._text.set_color('black')
+    table._cells[(5, -1)]._text.set_color('black')
     """save figure"""
     plt.savefig(figuresDir + 'calipsoVsCci.png', bbox_inches='tight')
+
+def randomMode(data, max=11):
+    """After counting the number of occurrences of each integer within data"""
+    counts = np.bincount(data, minlength=max)
+    """check whether several maxima exist"""
+    max_indexes = np.where(counts == counts.max())[0]
+    if (len(max_indexes) > 1):
+        """in which case randomly select one of these"""
+        max_index = np.random.choice(max_indexes)
+    else:
+        """else just take the maximum value"""
+        max_index = max_indexes[0]
+    """and return the (random) mode"""
+    return max_index
 
     
     

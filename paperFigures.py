@@ -40,17 +40,24 @@ codCum = hdf.select('Feature_Optical_Depth_532')
 ctp = hdf.select('Layer_Top_Pressure')
 ctt = hdf.select('Layer_Top_Temperature')
 cloudFlag = hdf.select('Feature_Classification_Flags')
+sfcIce = hdf.select('NSIDC_Surface_Type')
+sfcElev = hdf.select('DEM_Surface_Elevation')
+sfcType = hdf.select('IGBP_Surface_Type')
 calipsoLat = lat[:,1] # 4208,
 calipsoLon = lon[:,1] # 4208,
 calipsoCOD = cod[:,0] # 4208,
 calipsoCTP = ctp[:,:] # 4208, 10
 calipsoCTT = ctt[:,:] # 4208, 10
 calipsoFCF = cloudFlag[:,:] # 4208, 10: 0 is top, 9 bottom layer
+calipsoICE = sfcIce[:,:]
+calipsoTOP = sfcElev[:,:]
+calipsoTYP = sfcType[:,:]
 calipsoCODLayer = codCum[:,:] # 4208, 10: 0 is top, 9 bottom layer
 calipsoData = {'lat': calipsoLat, 'lon': calipsoLon,
                'cod': calipsoCOD, 'codLayered': calipsoCODLayer,
                'ctp': calipsoCTP, 'ctt': calipsoCTT,
-               'fcf': calipsoFCF}
+               'fcf': calipsoFCF, 'ice': calipsoICE,
+               'top': calipsoTOP, 'typ': calipsoTYP}
 
 figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
