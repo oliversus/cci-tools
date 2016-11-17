@@ -1,11 +1,10 @@
 #!/data/osus/Enthought/User/bin/python2.7
-# /home/oliver/Enthought/Canopy_64bit/User/bin/python
 
 from analyseCCI import CCI, cciGrid
-from CCITools import resampleCCI, writeCCI, greatCircle, randomMode
+from CCITools import resampleCCI, writeCCI, greatCircle
 import sys
 from sys import argv
-import numpy as np
+import os
 
 if len(argv) > 1:
     delLon = float(argv[1])
@@ -17,59 +16,66 @@ if len(argv) > 1:
     else:
         print "ERROR: 3rd argument should be [True/False]."
         sys.exit()
+    sceneTime = str(argv[4])  # 1) 07221915 2) 07270810
+    if sceneTime != '07221915' and sceneTime != '07270810':
+        print "ERROR: choose correct study date ('07221915' or '07270810')"
+        sys.exit()
 else:
     delLat = 0.5
     delLon = 0.5
     primary = True
+    sceneTime = '07270810'
+
+month = sceneTime[0:2]
+day = sceneTime[2:4]
+hour = sceneTime[4:6]
+minute = sceneTime[6:8]
+
+data_folder = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/data/"
 
 primaryString = "secondary"
 if primary:
         primaryString = "primary"
 print "Resampling " + primaryString + " data to " + str(delLon) + " lon x " + str(delLat) + " lat regular grid."
 
-# main path to input files
-mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
-mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
 if primary:
     suffix = "_primary"
 else:
     suffix = "_secondary"
-outNameN18 = "N18_Resampled_2008-07-22-1851_"
-outNameMYD = "MYD_Resampled_2008-07-22-1915_"
-outNameENV = "ENV_Resampled_2008-07-22-1844_"
+
+outNameN18 = "N18_Resampled_2008-" + month + "-" + day + "-" + hour + minute + "_"
+outNameMYD = "MYD" + outNameN18[3:len(outNameN18)]
+outNameENV = "ENV" + outNameN18[3:len(outNameN18)]
+
+# subset borders in lat/lon
+if sceneTime == '07221915':
+    centrePoint = [64.5, -102.5]
+    boundingBox = [-179., 0., 40, 90]
+elif sceneTime == '07270810':
+    centrePoint = [73., 50.]
+    boundingBox = [-50, 150., 25., 75.]
 
 # targetGrid:
-minLat = 40.0
-maxLat = 90.0
-minLon = -179.0
-maxLon = 0.
+minLat = boundingBox[2]
+maxLat = boundingBox[3]
+minLon = boundingBox[0]
+maxLon = boundingBox[1]
 
 targetGrid = cciGrid(minLat, minLon, maxLat, maxLon, delLat = delLat, delLon = delLon)
 targetGrid.buildGrid()
 
-# subset borders in lat/lon
-centrePoint = [64.5, -102.5] #[71 ,  -80 ] 
-leftPoint   = [70  , -150]
-upperPoint  = [87  ,  70 ]#95 ]
-rightPoint  = [87.5,  82 ]
-lowerPoint  = [58  , -85 ]
-latBounds   = [58  , 87.5]
-lonBounds   = [-150,  95 ]
-boundingBox = [leftPoint[1], upperPoint[1], lowerPoint[0], rightPoint[0]]
-boundingBox[3] = 65.
-boundingBox = [-179., 0., 40, 90] #[-134, -76, 52, 85]
-
 # NOAA18 paths and data
+l2_primary_prefix = "cci_l2_primary_"
 print "Reading NOAA18 data"
-pathL2PriN18 = mainL2 + "20080722185100-ESACCI-L2_CLOUD-CLD_PRODUCTS-AVHRRGAC-NOAA18-fv2.0.nc"
-pathL2SecN18 = mainL2 + "ECC_GAC_avhrr_noaa18_99999_20080722T1851289Z_20080722T2046134Z.secondary.nc"
+pathL2PriN18 = data_folder + l2_primary_prefix + "n18_" + sceneTime + ".nc"
+pathL2SecN18 = pathL2PriN18.replace("primary", "secondary")
 priN18 = CCI(pathL2PriN18)
 secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc" #"MYD20080722_1915.nc"
-pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc" # "MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc"
+pathL2PriMYD = data_folder + l2_primary_prefix + "myd_" + sceneTime + ".nc"
+pathL2SecMYD = pathL2PriMYD.replace("primary", "secondary")
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 # pathL2PriMYD2 = mainL2 + "MYD20080722_1920.nc"
@@ -81,8 +87,8 @@ secMYD = CCI(pathL2SecMYD)
 
 # Envisat AATSR paths and data
 print "Reading ENVISAT AATSR data"
-pathL2PriENV = mainL2 + "ESACCI-L2-CLOUD-CLD-AATSR_CC4CL_Envisat_200807221844_fv2.0.primary.nc"
-pathL2SecENV = mainL1 + "ATS_TOA_1PUUPA20080722_184428_000065272070_00313_33433_6676.nc"
+pathL2PriENV = data_folder + l2_primary_prefix + "env_" + sceneTime + ".nc"
+pathL2SecENV = pathL2PriENV.replace("primary", "secondary")
 priENV = CCI(pathL2PriENV)
 secENV = CCI(pathL2SecENV)
 
@@ -117,32 +123,30 @@ maxDistance *= 1.1
 
 # resample to N18 if requested
 print "Resampling data."
-# primary
 if primary:
     resampledData = resampleCCI(priMYD, targetGrid, "MYD", maxDistance)
-    fileName = mainL2 + outNameMYD + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
+    fileName = os.path.splitext(pathL2PriMYD)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
     resampledData = resampleCCI(priN18, targetGrid, "N18", maxDistance)
-    fileName = mainL2 + outNameN18 + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
+    fileName = os.path.splitext(pathL2PriN18)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
     resampledData = resampleCCI(priENV, targetGrid, "ENV", maxDistance)
-    fileName = mainL2 + outNameENV + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
+    fileName = os.path.splitext(pathL2PriENV)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
-# secondary
 else:
     resampledData = resampleCCI(secMYD, targetGrid, "MYD", maxDistance, lat_in = priMYD.lat, lon_in = priMYD.lon)
-    fileName = mainL2 + outNameMYD + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
+    fileName = os.path.splitext(pathL2SecMYD)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary, platform = "MYD")
     resampledData = resampleCCI(secN18, targetGrid, "N18", maxDistance, lat_in = priN18.lat, lon_in = priN18.lon)
-    fileName = mainL2 + outNameN18 + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
+    fileName = os.path.splitext(pathL2SecN18)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary, platform = "N18")
     resampledData = resampleCCI(secENV, targetGrid, "ENV", maxDistance, lat_in = secENV.lat, lon_in = secENV.lon)
-    fileName = mainL2 + outNameENV + "lat" + str(delLat) + "lon" + str(delLon) + suffix + ".nc"
+    fileName = os.path.splitext(pathL2SecENV)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary, platform = "ENV")
 

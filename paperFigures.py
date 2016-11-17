@@ -23,14 +23,26 @@ if len(argv) > 1:
     else:
         print "ERROR: 3rd argument should be [True/False]."
         sys.exit()
+    sceneTime = argv[4] # 1) 07221915 2) 07270810
+    if argv[4] is not '07221915' and argv[4] is not '07270810':
+        print "ERROR: choose correct study date ('07221915' or '07270810')"
+        sys.exit()
 else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
+    sceneTime = '07270810'
 
+month = sceneTime[0:2]
+day = sceneTime[2:4]
+hour = sceneTime[4:6]
+minute = sceneTime[6:8]
 
-calipsoPath1km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/1kmClay/2008/07/22/CAL_LID_L2_01kmCLay-ValStage1-V3-01.2008-07-22T18-41-41ZD.hdf"
-calipsoPath5km = "/cmsaf/cmsaf-cld1/thanschm/VALIDATION/DATASETS/CALIOP/2008/07/22/CAL_LID_L2_05kmCLay-Prov-V3-01.2008-07-22T18-41-41ZD.hdf"
+data_folder = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/data/"
+
+calipsoPath1km = data_folder + "calipso_1km_" + sceneTime + ".hdf"
+calipsoPath5km = data_folder + "calipso_5km_" + sceneTime + ".hdf"
+
 hdf = SD(calipsoPath5km, SDC.READ)
 # Read geolocation
 lat = hdf.select('Latitude')

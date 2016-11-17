@@ -265,17 +265,19 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
 
     returnCountMasked = ma.masked_values(returnCount, 0.)
     out = returnValues / returnCountMasked
-    for i in range(len(returnCldType)):
-        phase = round(out[i, variables.index('phase')], 0)
-        cldType = np.array(returnCldType[i]).astype(int)
-        if phase == 1.:
-            cldType = cldType[cldType < 5]
-            out[i, variables.index('cldtype')] = randomMode(cldType)
-        elif phase == 2:
-            cldType = cldType[cldType >= 5]
-            out[i, variables.index('cldtype')] = randomMode(cldType)
-        else:
-            pass
+
+    if primary:
+        for i in range(len(returnCldType)):
+            phase = round(out[i, variables.index('phase')], 0)
+            cldType = np.array(returnCldType[i]).astype(int)
+            if phase == 1.:
+                cldType = cldType[cldType < 5]
+                out[i, variables.index('cldtype')] = randomMode(cldType)
+            elif phase == 2:
+                cldType = cldType[cldType >= 5]
+                out[i, variables.index('cldtype')] = randomMode(cldType)
+            else:
+                pass
 
     out = out.reshape(targetGrid.lat.shape[0], targetGrid.lat.shape[1], len(variables))
 
