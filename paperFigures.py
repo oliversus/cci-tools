@@ -21,7 +21,7 @@ if len(argv) > 1:
     else:
         print "ERROR: 3rd argument should be [True/False]."
         sys.exit()
-    sceneTime = argv[4] # 1) 07221915 2) 07270810
+    sceneTime = argv[4] # 1) 07221915 2) 07270810 3) 07230021 4) 07222058
     if argv[4] != '07221915' and argv[4] != '07270810' and argv[4] != '07230021' and sceneTime != '07222058':
         print "ERROR: choose correct study date ('07221915' or '07270810' or '07230021' or '07222058')"
         sys.exit()
@@ -29,7 +29,7 @@ else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
-    sceneTime = '07222058'
+    sceneTime = '07270810'
 
 month = sceneTime[0:2]
 day = sceneTime[2:4]
@@ -49,7 +49,9 @@ lon = hdf.select('Longitude')
 cod = hdf.select('Column_Optical_Depth_Cloud_532')
 codCum = hdf.select('Feature_Optical_Depth_532')
 ctp = hdf.select('Layer_Top_Pressure')
+ctpBot = hdf.select('Layer_Base_Pressure')
 ctt = hdf.select('Layer_Top_Temperature')
+cth = hdf.select('Layer_Top_Altitude')
 cloudFlag = hdf.select('Feature_Classification_Flags')
 sfcIce = hdf.select('NSIDC_Surface_Type')
 sfcElev = hdf.select('DEM_Surface_Elevation')
@@ -58,7 +60,9 @@ calipsoLat = lat[:,1] # 4208,
 calipsoLon = lon[:,1] # 4208,
 calipsoCOD = cod[:,0] # 4208,
 calipsoCTP = ctp[:,:] # 4208, 10
+calipsoCTPBot = ctpBot[:,:] # 4208, 10
 calipsoCTT = ctt[:,:] # 4208, 10
+calipsoCTH = cth[:,:] # 4208, 10
 calipsoFCF = cloudFlag[:,:] # 4208, 10: 0 is top, 9 bottom layer
 calipsoICE = sfcIce[:,:]
 calipsoTOP = sfcElev[:,:]
@@ -66,7 +70,8 @@ calipsoTYP = sfcType[:,:]
 calipsoCODLayer = codCum[:,:] # 4208, 10: 0 is top, 9 bottom layer
 calipsoData = {'lat': calipsoLat, 'lon': calipsoLon,
                'cod': calipsoCOD, 'codLayered': calipsoCODLayer,
-               'ctp': calipsoCTP, 'ctt': calipsoCTT,
+               'ctp': calipsoCTP, 'ctpBot': calipsoCTPBot,
+               'ctt': calipsoCTT, 'cth': calipsoCTH,
                'fcf': calipsoFCF, 'ice': calipsoICE,
                'top': calipsoTOP, 'typ': calipsoTYP}
 
@@ -146,8 +151,8 @@ elif sceneTime == '07222058':
     poly_lons = [45, 90, 70, 30]
 
 # get all variables
-MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox = boundingBox)
-secMYD.getAllVariables(doSlice = True, boundingBox = boundingBox, primary = False, boxSlice = MYDSlice)
+MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox=boundingBox)
+secMYD.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=MYDSlice)
 print "Getting all variables: N18 resampled"
 N18PrimaryResampled.getAllVariables()
 N18SecondaryResampled.getAllVariables()

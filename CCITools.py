@@ -671,7 +671,9 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     calCod = calipso.get('cod')
     calCodLay = calipso.get('codLayered')
     calCtt = calipso.get('ctt')
+    calCth = calipso.get('cth')
     calCtp = calipso.get('ctp')
+    calCtpBot = calipso.get('ctpBot')
     calFcf = calipso.get('fcf')
     calIce = calipso.get('ice')
     calTop = calipso.get('top')
@@ -701,11 +703,15 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colLonCalipso = []
     colCodCalipso = []
     colCTP0Calipso = []
+    colCTPBot0Calipso = []
     colCTT0Calipso = []
     colCTP1Calipso = []
+    colCTPBot1Calipso = []
     colCTT1Calipso = []
     colCTP2Calipso = []
+    colCTPBot2Calipso = []
     colCTT2Calipso = []
+    colCTHCalipso = []
     colPhase0Calipso = []
     colPhase1Calipso = []
     colPhase2Calipso = []
@@ -765,7 +771,9 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         """TYPE: 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv."""
                         colType0Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))
                         colCTP0Calipso.append(calCtp[i, l])
+                        colCTPBot0Calipso.append(calCtpBot[i, l])
                         colCTT0Calipso.append(calCtt[i, l] + 273.15)
+                        colCTHCalipso.append(calCth[i, l])
                     if colCodCalipsoSum > 0.15 and not secondLayerFound:
                         """add data to collocated variables"""
                         """get the phase and type"""
@@ -773,6 +781,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colPhase1Calipso.append(int(flagBin[flagLength - 7:flagLength - 5], 2))  # 1=ice,2=water,3=ice
                         colType1Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
                         colCTP1Calipso.append(calCtp[i, l])
+                        colCTPBot1Calipso.append(calCtpBot[i, l])
                         colCTT1Calipso.append(calCtt[i, l] + 273.15)
                         colLatCalipso1.append(lat)
                     if colCodCalipsoSum > 1. and not thirdLayerFound:
@@ -782,6 +791,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colPhase2Calipso.append(int(flagBin[flagLength - 7:flagLength - 5], 2))  # 1=ice,2=water,3=ice
                         colType2Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
                         colCTP2Calipso.append(calCtp[i, l])
+                        colCTPBot2Calipso.append(calCtpBot[i, l])
                         colCTT2Calipso.append(calCtt[i, l] + 273.15)
                         colLatCalipso2.append(lat)
 
@@ -794,18 +804,22 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colPhase0Calipso.append(np.nan)
                         colType0Calipso.append(np.nan)
                         colCTP0Calipso.append(np.nan)
+                        colCTPBot0Calipso.append(np.nan)
                         colCTT0Calipso.append(np.nan)
                         colCodCalipso.append(calCod[i])
+                        colCTHCalipso.append(np.nan)
                     if not secondLayerFound:
                         colPhase1Calipso.append(np.nan)
                         colType1Calipso.append(np.nan)
                         colCTP1Calipso.append(np.nan)
+                        colCTPBot1Calipso.append(np.nan)
                         colCTT1Calipso.append(np.nan)
                         colLatCalipso1.append(lat)
                     if not thirdLayerFound:
                         colPhase2Calipso.append(np.nan)
                         colType2Calipso.append(np.nan)
                         colCTP2Calipso.append(np.nan)
+                        colCTPBot2Calipso.append(np.nan)
                         colCTT2Calipso.append(np.nan)
                         colLatCalipso2.append(lat)
         i += 1
@@ -819,11 +833,15 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colCTTCalipso0 = np.array(colCTT0Calipso)
     colCTTCalipso1 = np.array(colCTT1Calipso)
     colCTTCalipso2 = np.array(colCTT2Calipso)
+    colCTHCalipso = np.array(colCTHCalipso)
     colCtp = np.array(colCtp)
     colCtp = np.ma.masked_greater(colCtp, 10000.)
     colCTPCalipso0 = np.array(colCTP0Calipso)
     colCTPCalipso1 = np.array(colCTP1Calipso)
     colCTPCalipso2 = np.array(colCTP2Calipso)
+    colCTPBotCalipso0 = np.array(colCTPBot0Calipso)
+    colCTPBotCalipso1 = np.array(colCTPBot1Calipso)
+    colCTPBotCalipso2 = np.array(colCTPBot2Calipso)
     colLatCalipso = np.array(colLatCalipso)
     colCph = np.array(colCph)
     colCty = np.array(colCty)
@@ -838,12 +856,12 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
     colTopCalipso = np.array(colTopCalipso)
     colTypCalipso = np.array(colTypCalipso)
     out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCph': colCph, 'cciCty': colCty, 'cciNise': colNise,
-           'calipsoCtt0': colCTTCalipso0, 'calipsoCtp0': colCTPCalipso0,
+           'calipsoCtt0': colCTTCalipso0, 'calipsoCtp0': colCTPCalipso0, 'calipsoCtpBot0': colCTPBotCalipso0,
            'calipsoPhase0': colPhase0Calipso, 'calipsoType0': colType0Calipso,
-           'calipsoCtt1': colCTTCalipso1, 'calipsoCtp1': colCTPCalipso1,
+           'calipsoCtt1': colCTTCalipso1, 'calipsoCtp1': colCTPCalipso1, 'calipsoCtpBot1': colCTPBotCalipso1,
            'calipsoPhase1': colPhase1Calipso, 'calipsoType1': colType1Calipso,
-           'calipsoCtt2': colCTTCalipso2, 'calipsoCtp2': colCTPCalipso2,
-           'calipsoPhase2': colPhase2Calipso, 'calipsoType2': colType2Calipso,
+           'calipsoCtt2': colCTTCalipso2, 'calipsoCtp2': colCTPCalipso2, 'calipsoCtpBot2': colCTPBotCalipso2,
+           'calipsoPhase2': colPhase2Calipso, 'calipsoType2': colType2Calipso, 'calipsoCth': colCTHCalipso,
            'calipsoLat0': colLatCalipso, 'calipsoLat1': colLatCalipso1, 'calipsoLat2': colLatCalipso2,
            'calipsoCOD': colCodCalipso, 'calipsoIce': colIceCalipso, 'calipsoTop': colTopCalipso, 'calipsoTyp': colTypCalipso}
     return out
@@ -871,11 +889,18 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR")
     ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="g")
     ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="white")
-    ax.scatter(plotLat2, N18.get('calipsoCtp2'), label="Calipso [COT > 1]", c="pink")
-    ax.scatter(plotLat0, N18.get('calipsoCtp0'), label="Calipso [COT > 0]", c="r")
+    #ax.scatter(plotLat2, N18.get('calipsoCtp2'), label="Calipso [COT > 1]", c="pink")
+    width = (max(plotLat2)-min(plotLat2)) / len(plotLat2)
+    alpha = 1
+    ax.bar(plotLat2, N18.get('calipsoCtp0') - N18.get('calipsoCtpBot0'), bottom=N18.get('calipsoCtpBot0'), width=width, color="yellow", alpha=alpha, label="Calipso [COT > 0]")
+    ax.bar(plotLat2, N18.get('calipsoCtp1') - N18.get('calipsoCtpBot1'), bottom=N18.get('calipsoCtpBot1'), width=width,
+           color="orange", alpha=alpha, label="Calipso [COT > 0.15]")
+    ax.bar(plotLat2, N18.get('calipsoCtp2') - N18.get('calipsoCtpBot2'), bottom=N18.get('calipsoCtpBot2'), width=width,
+           color="red", alpha=alpha, label="Calipso [COT > 1]")
+    #ax.scatter(plotLat0, N18.get('calipsoCtp0'), label="Calipso [COT > 0]", c="r")
     ax.set_ylabel("CTP [hPa]")
     handles, labels = ax.get_legend_handles_labels()
-    order=[0,1,2,4,3]
+    order=[0,1,2,3,4,5]
     labels = [ labels[i] for i in order]
     handles = [handles[i] for i in order]
     leg = ax.legend(handles=handles, labels=labels, loc=3, frameon=True, fancybox=True, fontsize=11)
