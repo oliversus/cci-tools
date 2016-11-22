@@ -886,18 +886,17 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     ax = fig.add_subplot(2, 1, 1)  # 3 plots, vertically arranged
     ax.set_xlim([minX, maxX])
     plt.gca().invert_yaxis()
-    ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR")
-    ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="g")
-    ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="white")
     #ax.scatter(plotLat2, N18.get('calipsoCtp2'), label="Calipso [COT > 1]", c="pink")
     width = (max(plotLat2)-min(plotLat2)) / len(plotLat2)
     alpha = 1
-    ax.bar(plotLat2, N18.get('calipsoCtp0') - N18.get('calipsoCtpBot0'), bottom=N18.get('calipsoCtpBot0'), width=width, color="yellow", alpha=alpha, label="Calipso [COT > 0]")
+    ax.bar(plotLat2, N18.get('calipsoCtp0') - N18.get('calipsoCtpBot0'), bottom=N18.get('calipsoCtpBot0'), width=width, color="orange", alpha=alpha, label="Calipso [COT > 0]")
     ax.bar(plotLat2, N18.get('calipsoCtp1') - N18.get('calipsoCtpBot1'), bottom=N18.get('calipsoCtpBot1'), width=width,
-           color="orange", alpha=alpha, label="Calipso [COT > 0.15]")
+           color="red", alpha=alpha, label="Calipso [COT > 0.15]")
     ax.bar(plotLat2, N18.get('calipsoCtp2') - N18.get('calipsoCtpBot2'), bottom=N18.get('calipsoCtpBot2'), width=width,
-           color="red", alpha=alpha, label="Calipso [COT > 1]")
-    #ax.scatter(plotLat0, N18.get('calipsoCtp0'), label="Calipso [COT > 0]", c="r")
+           color="brown", alpha=alpha, label="Calipso [COT > 1]")
+    ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR", zorder=10)
+    ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="g", zorder=10)
+    ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="yellow", zorder=10)
     ax.set_ylabel("CTP [hPa]")
     handles, labels = ax.get_legend_handles_labels()
     order=[0,1,2,3,4,5]
