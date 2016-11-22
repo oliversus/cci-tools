@@ -558,7 +558,7 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
     plt.savefig(figureName, bbox_inches='tight')
 
 def plotRGBMulti(figureName, colourTuple,
-            lat, lon, dummy,
+            lat, lon, poly_lats, poly_lons, dummy,
             latCalipso, lonCalipso,
             lat_0, lon_0,
             width = 5000000, height = 5000000,
@@ -575,7 +575,7 @@ def plotRGBMulti(figureName, colourTuple,
                   lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
 
     # define calipso lat, lon
-    x, y = np.reshape(lonCalipso, (4208, 1)), np.reshape(latCalipso, (4208, 1))
+    x, y = np.reshape(lonCalipso, (lonCalipso.shape[0], 1)), np.reshape(latCalipso, (latCalipso.shape[0], 1))
     xCalipso, yCalipso = map(x, y)
 
     # define figure size
@@ -585,9 +585,6 @@ def plotRGBMulti(figureName, colourTuple,
     # define # subplots
     nRows = 1
     nCols = nPlots
-    
-    lats = [58.5, 78, 83.5, 63]
-    lons = [-121, -73, -63., -128.5]
 
     for i in range(nPlots):
         ax = fig1.add_subplot(nRows, nCols, i + 1)
@@ -611,7 +608,7 @@ def plotRGBMulti(figureName, colourTuple,
         mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,i], latlon = True, linewidth = 0.05, clip_on = True)
         mesh.set_array(None)
         mesh = map.plot(xCalipso, yCalipso, color = 'red', linestyle="dashed", linewidth=2.)
-        draw_screen_poly(lats, lons, map)
+        draw_screen_poly(poly_lats, poly_lons, map)
     plt.savefig(figureName, bbox_inches='tight')
   
 def mergeGranules(path1, path2, outPath):
@@ -735,8 +732,18 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
         calipsoToBox = greatCircle(lon, lat, lonNN, latNN)
         """If this distance is smaller than the maximum possible distance, """
         if calipsoToBox < maxDistance:
+            colIceCalipso.append(calIce[i, 0])
+            colTopCalipso.append(calTop[i, 0])
+            colTypCalipso.append(calTyp[i, 0])
             colCodCalipsoSum = 0.
             """" get Calipso feature flag, looping over atmosphere layers"""
+            colDist.append(calipsoToBox)
+            colCot.append(cciCot[targetIndex])
+            colCtt.append(cciCtt[targetIndex])
+            colCtp.append(cciCtp[targetIndex])
+            colCph.append(cciCph[targetIndex])
+            colCty.append(cciCty[targetIndex])
+            colNise.append(cciNise[targetIndex])
             for l in range(calFcf.shape[1]):
                 flagInt = int(calFcf[i, l])
                 flagLength = flagInt.bit_length()
@@ -751,15 +758,6 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                     if colCodCalipsoSum > 0. and not firstLayerFound:
                         firstLayerFound = True
                         """add data to collocated variables"""
-                        colDist.append(calipsoToBox)
-                        colCot.append(cciCot[targetIndex])
-                        colCtt.append(cciCtt[targetIndex])
-                        colCtp.append(cciCtp[targetIndex])
-                        colCph.append(cciCph[targetIndex])
-                        colCty.append(cciCty[targetIndex])
-                        colNise.append(cciNise[targetIndex])
-                        colLatCalipso.append(lat)
-                        colLonCalipso.append(lon)
                         colCodCalipso.append(calCod[i])
                         """get the phase and type"""
                         """PHASE: 1=ice,2=water,3=ice"""
@@ -768,9 +766,6 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colType0Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))
                         colCTP0Calipso.append(calCtp[i, l])
                         colCTT0Calipso.append(calCtt[i, l] + 273.15)
-                        colIceCalipso.append(calIce[i, l])
-                        colTopCalipso.append(calTop[i, l])
-                        colTypCalipso.append(calTyp[i, l])
                     if colCodCalipsoSum > 0.15 and not secondLayerFound:
                         """add data to collocated variables"""
                         """get the phase and type"""
@@ -789,14 +784,18 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colCTP2Calipso.append(calCtp[i, l])
                         colCTT2Calipso.append(calCtt[i, l] + 273.15)
                         colLatCalipso2.append(lat)
-                """if no additional cloud layers were found, add nan to layer variables"""
+
                 if l == (calFcf.shape[1] - 1):
+                    """if in last layer, get calipso lat/lon"""
+                    colLatCalipso.append(lat)
+                    colLonCalipso.append(lon)
+                    """if no additional cloud layers were found, add nan to layer variables"""
                     if not firstLayerFound:
                         colPhase0Calipso.append(np.nan)
                         colType0Calipso.append(np.nan)
                         colCTP0Calipso.append(np.nan)
                         colCTT0Calipso.append(np.nan)
-                        colLatCalipso.append(lat)
+                        colCodCalipso.append(calCod[i])
                     if not secondLayerFound:
                         colPhase1Calipso.append(np.nan)
                         colType1Calipso.append(np.nan)
@@ -809,7 +808,6 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
                         colCTP2Calipso.append(np.nan)
                         colCTT2Calipso.append(np.nan)
                         colLatCalipso2.append(lat)
-
         i += 1
 
     """output variables should be numpy arrays and not dictionaries"""
@@ -850,7 +848,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
            'calipsoCOD': colCodCalipso, 'calipsoIce': colIceCalipso, 'calipsoTop': colTopCalipso, 'calipsoTyp': colTypCalipso}
     return out
 
-def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresDir):
+def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath):
 
     print "Plotting collocated data for Calipso and CCI."
 
@@ -994,7 +992,7 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresD
     table._cells[(4, -1)]._text.set_color('black')
     table._cells[(5, -1)]._text.set_color('black')
     """save figure"""
-    plt.savefig(figuresDir + 'calipsoVsCci.png', bbox_inches='tight')
+    plt.savefig(figurePath, bbox_inches='tight')
 
 def randomMode(data, max=11):
     """After counting the number of occurrences of each integer within data"""

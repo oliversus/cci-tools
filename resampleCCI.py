@@ -17,14 +17,14 @@ if len(argv) > 1:
         print "ERROR: 3rd argument should be [True/False]."
         sys.exit()
     sceneTime = str(argv[4])  # 1) 07221915 2) 07270810
-    if sceneTime != '07221915' and sceneTime != '07270810':
-        print "ERROR: choose correct study date ('07221915' or '07270810')"
+    if sceneTime != '07221915' and sceneTime != '07270810' and sceneTime != '07230021' and sceneTime != '07222058':
+        print "ERROR: choose correct study date ('07221915' or '07270810' or '07230021' or '07222058')"
         sys.exit()
 else:
-    delLat = 0.5
-    delLon = 0.5
+    delLat = 0.1
+    delLon = 0.1
     primary = True
-    sceneTime = '07270810'
+    sceneTime = '07222058'
 
 month = sceneTime[0:2]
 day = sceneTime[2:4]
@@ -44,16 +44,22 @@ else:
     suffix = "_secondary"
 
 outNameN18 = "N18_Resampled_2008-" + month + "-" + day + "-" + hour + minute + "_"
-outNameMYD = "MYD" + outNameN18[3:len(outNameN18)]
-outNameENV = "ENV" + outNameN18[3:len(outNameN18)]
+outNameMYD = outNameN18.replace("N18", "MYD")
+outNameENV = outNameN18.replace("N18", "ENV") #"ENV" + outNameN18[3:len(outNameN18)]
 
 # subset borders in lat/lon
 if sceneTime == '07221915':
     centrePoint = [64.5, -102.5]
     boundingBox = [-179., 0., 40, 90]
 elif sceneTime == '07270810':
-    centrePoint = [73., 50.]
-    boundingBox = [-50, 150., 25., 75.]
+    centrePoint = [73., 55.]
+    boundingBox = [-10., 130., 45., 90.]
+elif sceneTime == '07230021':
+    centrePoint = [71., 173.]
+    boundingBox = [140., -160., 45., 90.]
+elif sceneTime == '07222058':
+    centrePoint = [74., -143.]
+    boundingBox = [-180., -100., 45., 90.]
 
 # targetGrid:
 minLat = boundingBox[2]
@@ -129,7 +135,9 @@ if primary:
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
     resampledData = resampleCCI(priN18, targetGrid, "N18", maxDistance)
-    fileName = os.path.splitext(pathL2PriN18)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
+    fileName = os.path.splitext(pathL2PriN18)[0] + "_resampled_" \
+                                                   "" \
+                                                   "" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
     resampledData = resampleCCI(priENV, targetGrid, "ENV", maxDistance)

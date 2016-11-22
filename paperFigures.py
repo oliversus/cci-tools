@@ -4,13 +4,11 @@ from analyseCCI import CCI
 import numpy as np
 from CCITools import buildRGB, plotRGB,\
     plotRGBMulti, greatCircle, collocateCciAndCalipso, \
-    plotCciCalipsoCollocation, plotCCI, minMax
+    plotCciCalipsoCollocation
 import sys
 import numpy.ma as ma
 from pyhdf.SD import SD, SDC
 from sys import argv
-import math
-import matplotlib.pyplot as plt
 
 if len(argv) > 1:
     delLon = argv[1]
@@ -24,14 +22,14 @@ if len(argv) > 1:
         print "ERROR: 3rd argument should be [True/False]."
         sys.exit()
     sceneTime = argv[4] # 1) 07221915 2) 07270810
-    if argv[4] is not '07221915' and argv[4] is not '07270810':
-        print "ERROR: choose correct study date ('07221915' or '07270810')"
+    if argv[4] != '07221915' and argv[4] != '07270810' and argv[4] != '07230021' and sceneTime != '07222058':
+        print "ERROR: choose correct study date ('07221915' or '07270810' or '07230021' or '07222058')"
         sys.exit()
 else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
-    sceneTime = '07270810'
+    sceneTime = '07222058'
 
 month = sceneTime[0:2]
 day = sceneTime[2:4]
@@ -39,6 +37,7 @@ hour = sceneTime[4:6]
 minute = sceneTime[6:8]
 
 data_folder = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/data/"
+figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 
 calipsoPath1km = data_folder + "calipso_1km_" + sceneTime + ".hdf"
 calipsoPath5km = data_folder + "calipso_5km_" + sceneTime + ".hdf"
@@ -71,71 +70,80 @@ calipsoData = {'lat': calipsoLat, 'lon': calipsoLon,
                'fcf': calipsoFCF, 'ice': calipsoICE,
                'top': calipsoTOP, 'typ': calipsoTYP}
 
-figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
-mainL1 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L1/"
-mainL2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/"
 delLatStr = str(delLat); delLatStr = delLatStr.replace(".", "")
 delLonStr = str(delLon); delLonStr = delLonStr.replace(".", "")
-N18PrimaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_primary.nc"
-MYDPrimaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_primary.nc"
-ENVPrimaryResampledName = "ENV_Resampled_2008-07-22-1844_lat" + delLat + "lon" + delLon + "_primary.nc"
-N18SecondaryResampledName = "N18_Resampled_2008-07-22-1851_lat" + delLat + "lon" + delLon + "_secondary.nc"
-MYDSecondaryResampledName = "MYD_Resampled_2008-07-22-1915_lat" + delLat + "lon" + delLon + "_secondary.nc"
-ENVSecondaryResampledName = "ENV_Resampled_2008-07-22-1844_lat" + delLat + "lon" + delLon + "_secondary.nc"
+
+l2_primary_prefix = "cci_l2_primary_"
+N18PrimaryResampledName = l2_primary_prefix + "n18_" + sceneTime + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
+N18SecondaryResampledName = N18PrimaryResampledName.replace("primary", "secondary")
+MYDPrimaryResampledName = N18PrimaryResampledName.replace("n18", "myd")
+MYDSecondaryResampledName = MYDPrimaryResampledName.replace("primary", "secondary")
+ENVPrimaryResampledName = N18PrimaryResampledName.replace("n18", "env")
+ENVSecondaryResampledName = ENVPrimaryResampledName.replace("primary", "secondary")
 
 # NOAA18 paths and data
 print "Reading NOAA18 data"
-pathL2PriN18 = mainL2 + "20080722185100-ESACCI-L2_CLOUD-CLD_PRODUCTS-AVHRRGAC-NOAA18-fv2.0.nc"
-pathL2SecN18 = mainL2 + "ECC_GAC_avhrr_noaa18_99999_20080722T1851289Z_20080722T2046134Z.secondary.nc"
+pathL2PriN18 = data_folder + l2_primary_prefix + "n18_" + sceneTime + ".nc"
+pathL2SecN18 = pathL2PriN18.replace("primary", "secondary")
 priN18 = CCI(pathL2PriN18)
 secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = mainL2 + "MYD_merged_20080722_19151920_primary.nc" #"MYD20080722_1915.nc"
-pathL2SecMYD = mainL2 + "MYD_merged_20080722_19151920_secondary.nc" #"MYD021KM.A2008204.1915.006.2012069115248.bspscs_000500694537.secondary.nc"
+pathL2PriMYD = data_folder + l2_primary_prefix + "myd_" + sceneTime + ".nc"
+pathL2SecMYD = pathL2PriMYD.replace("primary", "secondary")
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 
 # ENVISAT AATSR paths and data
 print "Reading ENVISAT AATSR data"
-pathL2PriENV = mainL2 + "ESACCI-L2-CLOUD-CLD-AATSR_CC4CL_Envisat_200807221844_fv2.0.primary.nc"
-pathL2SecENV = mainL1 + "ATS_TOA_1PUUPA20080722_184428_000065272070_00313_33433_6676.nc"
-priMYD = CCI(pathL2PriMYD)
-secMYD = CCI(pathL2SecMYD)
+pathL2PriENV = data_folder + l2_primary_prefix + "env_" + sceneTime + ".nc"
+pathL2SecENV = pathL2PriENV.replace("primary", "secondary")
+priENV = CCI(pathL2PriENV)
+secENV = CCI(pathL2SecENV)
 
 # N18 paths and data, RESAMPLED
 print "Reading resampled N18 data"
-pathL2N18PrimaryResampled = mainL2 + N18PrimaryResampledName
+pathL2N18PrimaryResampled = data_folder + N18PrimaryResampledName
 N18PrimaryResampled = CCI(pathL2N18PrimaryResampled)
-pathL2N18SecondaryResampled = mainL2 + N18SecondaryResampledName
+pathL2N18SecondaryResampled = data_folder + N18SecondaryResampledName
 N18SecondaryResampled = CCI(pathL2N18SecondaryResampled)
 
 # MODIS AQUA paths and data, RESAMPLED
 print "Reading resampled MODIS AQUA data"
-pathL2MYDPrimaryResampled = mainL2 + MYDPrimaryResampledName
+pathL2MYDPrimaryResampled = data_folder + MYDPrimaryResampledName
 MYDPrimaryResampled = CCI(pathL2MYDPrimaryResampled)
-pathL2MYDSecondaryResampled = mainL2 + MYDSecondaryResampledName
+pathL2MYDSecondaryResampled = data_folder + MYDSecondaryResampledName
 MYDSecondaryResampled = CCI(pathL2MYDSecondaryResampled)
 
 # ENVISAT AATSR paths and data, RESAMPLED
 print "Reading resampled ENVISAT AATSR data"
-pathL2ENVPrimaryResampled = mainL2 + ENVPrimaryResampledName
+pathL2ENVPrimaryResampled = data_folder + ENVPrimaryResampledName
 ENVPrimaryResampled = CCI(pathL2ENVPrimaryResampled)
-pathL2ENVSecondaryResampled = mainL2 + ENVSecondaryResampledName
+pathL2ENVSecondaryResampled = data_folder + ENVSecondaryResampledName
 ENVSecondaryResampled = CCI(pathL2ENVSecondaryResampled)
 
 # subset borders in lat/lon
-centrePoint = [66.5, -108.]
-leftPoint = [70, -150]
-upperPoint = [87,  70]
-rightPoint = [87.5,  82]
-lowerPoint = [58, -85]
-latBounds = [58, 87.5]
-lonBounds = [-150,  95]
-boundingBox = [leftPoint[1], upperPoint[1], lowerPoint[0], rightPoint[0]]
-boundingBox[3] = 65.
-boundingBox = [-134, -76, 52, 90]
+if sceneTime == '07221915':
+    centrePoint = [64.5, -102.5]
+    boundingBox = [-179., 0., 40, 90]
+    poly_lats = [58.5, 78, 83.5, 63]
+    poly_lons = [-121, -73, -63., -128.5]
+elif sceneTime == '07270810':
+    centrePoint = [73., 55.]
+    boundingBox = [-10., 130., 45., 90.]
+    poly_lats = [63, 79., 85, 65]
+    poly_lons = [45, 90, 70, 30]
+elif sceneTime == '07230021':
+    centrePoint = [71., 173.]
+    boundingBox = [140., -160., 45., 90.]
+    poly_lats = [63, 79., 85, 65]
+    poly_lons = [45, 90, 70, 30]
+elif sceneTime == '07222058':
+    centrePoint = [74., -143.]
+    boundingBox = [-180., -100., 45., 90.]
+    poly_lats = [63, 79., 85, 65]
+    poly_lons = [45, 90, 70, 30]
 
 # get all variables
 MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox = boundingBox)
@@ -172,21 +180,21 @@ if doRGB:
     platform = "MYD"
     colourTupleMYD = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled, platform)
     RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
-    plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.reflectance_in_channel_no_1, 
+    plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
     platform = "N18"
     colourTupleN18 = buildRGB(N18PrimaryResampled, N18SecondaryResampled, platform)
     RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
-    plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1, 
+    plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
     platform = "ENV"
     colourTupleENV = buildRGB(ENVPrimaryResampled, ENVSecondaryResampled, platform)
     RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
-    plotRGB(RGBName, colourTupleENV, ENVSecondaryResampled.lat, ENVSecondaryResampled.lon, ENVSecondaryResampled.reflectance_in_channel_no_1, 
-            centrePoint[0], centrePoint[1])    
+    plotRGB(RGBName, colourTupleENV, ENVSecondaryResampled.lat, ENVSecondaryResampled.lon, ENVSecondaryResampled.reflectance_in_channel_no_1,
+            centrePoint[0], centrePoint[1])
     colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleENV[..., np.newaxis]), axis=2)
     RGBName = figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + ".png"
-    plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1, 
+    plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, poly_lats, poly_lons, N18SecondaryResampled.reflectance_in_channel_no_1,
                 calipsoLat, calipsoLon,
                 centrePoint[0], centrePoint[1])    
     print "RGB: done."    
@@ -218,7 +226,8 @@ collocateMYD = collocateCciAndCalipso(MYDPrimaryResampled, calipsoData, maxDista
 collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDistance)
 
 """Plot collocated data for COT, CTP, and CTT."""
-plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figuresDir)
+figurePath = figuresDir + "calipsoVsCci_" + sceneTime + ".png"
+plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath)
 
 N18PrimaryResampled.maskAllVariables(ReflMask)
 N18SecondaryResampled.maskAllVariables(ReflMask)
@@ -228,7 +237,6 @@ ENVPrimaryResampled.maskAllVariables(ReflMask)
 ENVSecondaryResampled.maskAllVariables(ReflMask)
 
 sys.exit()
-
     
     # b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
 timeDiff = ((MYDPrimaryResampled.time - math.floor(MYDPrimaryResampled.time.min())) \
