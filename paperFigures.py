@@ -1,4 +1,6 @@
-#!/data/osus/Enthought/User/bin/python2.7
+#!/usr/bin/python
+
+#/data/osus/Enthought/User/bin/python2.7
 
 from analyseCCI import CCI
 import numpy as np
@@ -29,15 +31,15 @@ else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
-    sceneTime = '07270810'
+    sceneTime = '07222058'
 
 month = sceneTime[0:2]
 day = sceneTime[2:4]
 hour = sceneTime[4:6]
 minute = sceneTime[6:8]
 
-data_folder = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/data/"
-figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
+data_folder = "/mnt/DATA/DWD/ESA_CCI/data/" #"/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/data/"
+figuresDir = "/mnt/DATA/DWD/ESA_CCI/paper/figures/" #"/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 
 calipsoPath1km = data_folder + "calipso_1km_" + sceneTime + ".hdf"
 calipsoPath5km = data_folder + "calipso_5km_" + sceneTime + ".hdf"
@@ -232,7 +234,7 @@ collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDista
 
 """Plot collocated data for COT, CTP, and CTT."""
 figurePath = figuresDir + "calipsoVsCci_" + sceneTime + ".png"
-plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath)
+plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime)
 
 N18PrimaryResampled.maskAllVariables(ReflMask)
 N18SecondaryResampled.maskAllVariables(ReflMask)

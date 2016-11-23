@@ -866,7 +866,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
            'calipsoCOD': colCodCalipso, 'calipsoIce': colIceCalipso, 'calipsoTop': colTopCalipso, 'calipsoTyp': colTypCalipso}
     return out
 
-def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath):
+def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime):
 
     print "Plotting collocated data for Calipso and CCI."
 
@@ -884,57 +884,82 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     maxX = plotLat0.max()
     """CTP"""
     ax = fig.add_subplot(2, 1, 1)  # 3 plots, vertically arranged
-    ax.set_xlim([minX, maxX])
+    width = (max(plotLat2)-min(plotLat2)) / len(plotLat2) # bar width
+    ax.set_xlim([minX - width * 0.5, maxX + width * 0.5])
     plt.gca().invert_yaxis()
     #ax.scatter(plotLat2, N18.get('calipsoCtp2'), label="Calipso [COT > 1]", c="pink")
-    width = (max(plotLat2)-min(plotLat2)) / len(plotLat2)
     alpha = 1
-    ax.bar(plotLat2, N18.get('calipsoCtp0') - N18.get('calipsoCtpBot0'), bottom=N18.get('calipsoCtpBot0'), width=width, color="orange", alpha=alpha, label="Calipso [COT > 0]")
-    ax.bar(plotLat2, N18.get('calipsoCtp1') - N18.get('calipsoCtpBot1'), bottom=N18.get('calipsoCtpBot1'), width=width,
-           color="red", alpha=alpha, label="Calipso [COT > 0.15]")
-    ax.bar(plotLat2, N18.get('calipsoCtp2') - N18.get('calipsoCtpBot2'), bottom=N18.get('calipsoCtpBot2'), width=width,
-           color="brown", alpha=alpha, label="Calipso [COT > 1]")
-    ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR", zorder=10)
-    ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="g", zorder=10)
+    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp0') - N18.get('calipsoCtpBot0'), bottom=N18.get('calipsoCtpBot0'), width=width,
+           color="lavenderblush", alpha=alpha, label="Calipso [COT > 0]")
+    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp1') - N18.get('calipsoCtpBot1'), bottom=N18.get('calipsoCtpBot1'), width=width,
+           color="lightpink", alpha=alpha, label="Calipso [COT > 0.15]")
+    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp2') - N18.get('calipsoCtpBot2'), bottom=N18.get('calipsoCtpBot2'), width=width,
+           color="thistle", alpha=alpha, label="Calipso [COT > 1]")
+    ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR", c="r", zorder=10)
+    ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="aqua", zorder=10)
     ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="yellow", zorder=10)
     ax.set_ylabel("CTP [hPa]")
     handles, labels = ax.get_legend_handles_labels()
     order=[0,1,2,3,4,5]
     labels = [ labels[i] for i in order]
     handles = [handles[i] for i in order]
-    leg = ax.legend(handles=handles, labels=labels, loc=3, frameon=True, fancybox=True, fontsize=11)
+    loc = 3
+    if sceneTime == '07222058':
+        loc = 2
+    leg = ax.legend(handles=handles, labels=labels, loc=loc, frameon=True, fancybox=True, fontsize=11)
     leg.get_frame().set_alpha(0.5)
     """COT"""
     ax = fig.add_subplot(2, 1, 2)
     ax.set_ylim([0, 50])
     plt.gca().invert_yaxis()
-    ax.set_xlim([minX, maxX])
-    ax.scatter(plotLat0, N18.get('cciCot'), zorder=10)
-    ax.scatter(plotLat0, ENV.get('cciCot'), c="white", zorder=10)
-    ax.scatter(plotLat0, MYD.get('cciCot'), c="g", zorder=10)
-    ax.scatter(plotLat0, N18.get('calipsoCOD'), c="r", zorder=10)
+    ax.set_xlim([minX - width * 0.5, maxX + width * 0.5])
+    ax.scatter(plotLat0, N18.get('cciCot'), c="r", zorder=10)
+    ax.scatter(plotLat0, ENV.get('cciCot'), c="aqua", zorder=10)
+    ax.scatter(plotLat0, MYD.get('cciCot'), c="yellow", zorder=10)
+    foo = np.where(N18.get('calipsoCOD')==0, np.nan, N18.get('calipsoCOD'))
+    ax.scatter(plotLat0, foo, c="thistle", zorder=10)
     ax.set_ylabel("COT")
     plt.xlabel("Latitude")
     """Surface elevation, snow/ice, surface type"""
     topography = N18.get('calipsoTop') * 1000.
+    topoMax = topography.max()
     ice = N18.get('calipsoIce')
+    # calipso ice/snow values: 1-100, 101, 102 (not used), 103
     iceNise = N18.get('cciNise')
     surface_type = N18.get('calipsoTyp')
-    ice_masked = ma.masked_inside(ice, 1, 101)
+    ice_masked = ma.masked_inside(ice, 1, 103)
+    sea_masked = ma.masked_equal(surface_type, 17)
     topography_masked = topography[ice_masked.mask].copy()
     lat_masked = plotLat0[ice_masked.mask].copy()
     ax2 = ax.twinx()
     ax2.set_ylabel("surface elevation [m]")
-    ax2.set_xlim([minX, maxX])
-    ax2.set_ylim(0, 2000.)
-    yticks = np.arange(0, 600, 100)
+    ax2.set_xlim([minX - width * 0.5, maxX + width * 0.5])
+    ax2.set_ylim(0, topoMax * 5)
+    if topoMax < 500.:
+        yInterval = 100
+    else:
+        yInterval = 200.
+    yticks = np.arange(0, topoMax, yInterval)
     lw = 5.
-    ax2.fill_between(plotLat0, topography+10, facecolor="green", alpha=0.5, zorder=1, linewidth=lw, edgecolor="green")
-    ax2.plot(plotLat0[surface_type == 17], topography[surface_type == 17], c="blue", linewidth=lw, zorder=2)
-    ax2.plot(plotLat0[ice == 101], topography[ice == 101]+10, c="grey", linewidth=lw, zorder=2)
-    ax2.plot(plotLat0[(ice > 0) & (ice < 101)], topography[(ice > 0) & (ice < 101)]+10, c="grey", linewidth=lw, zorder=2)
+    ax2.fill_between(plotLat0, topography+10, facecolor="green", alpha=0.5, zorder=1, linewidth=lw, edgecolor="")
+
+    # sea
+    if sea_masked.count() < len(sea_masked):
+        splits = get_mask_segments_start_and_length(sea_masked.mask)
+        for start, length in splits:
+            x = plotLat0[start:start+length]
+            y = topography[start:start+length]
+            ax2.plot(x, y, c="blue", linewidth=lw, zorder=2)
+
+    # ice
+    if ice_masked.count() < len(ice_masked):
+        splits = get_mask_segments_start_and_length(ice_masked.mask)
+        for start, length in splits:
+            x = plotLat0[start:start+length]
+            y = topography[start:start+length]
+            ax2.plot(x, y, c="grey", linewidth=lw, zorder=2)
+
     ax2.set_yticks(yticks)
-    #ax2.plot(plotLat0[iceNise != 0.], topography[iceNise != 0.], c="red", linewidth=3, zorder=2)
 
     """CLOUD PHASE TABLE"""
     cphCal0 = np.array(N18.get('calipsoPhase0'))
@@ -1003,7 +1028,6 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
                       cellColours=cell_colours,
                       bbox=[0., -0.45, 1., 0.3],
                       loc='bottom')
-    table.set_fontsize(10)
     # iterate through cells of a table
     table_props = table.properties()
     table_cells = table_props['child_artists']
@@ -1015,6 +1039,8 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     table._cells[(3, -1)]._text.set_color('black')
     table._cells[(4, -1)]._text.set_color('black')
     table._cells[(5, -1)]._text.set_color('black')
+    #table.set_fontsize(20)
+    #table.scale(1, 2)
     """save figure"""
     plt.savefig(figurePath, bbox_inches='tight')
 
@@ -1031,6 +1057,23 @@ def randomMode(data, max=11):
         max_index = max_indexes[0]
     """and return the (random) mode"""
     return max_index
+
+def get_mask_segments_start_and_length(mask):
+    k = 0
+    splits = []
+    is_true = False
+    for j in mask:
+        if j and not is_true:
+            start = k
+            is_true = True
+        elif not j and is_true:
+            length = k - start
+            is_true =False
+            splits.append((start, length))
+        k += 1
+    if k == len(mask) and is_true:
+        splits.append((start, length))
+    return splits
 
     
     
