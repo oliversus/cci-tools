@@ -40,41 +40,44 @@ def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         cot = ncOut.createVariable("cot","f8",("along_track", "across_track"))
         cot[:,:] = data[:,:,3]
 
+        cot = ncOut.createVariable("cot_uncertainty","f8",("along_track", "across_track"))
+        cot[:,:] = data[:,:,4]
+
         cer = ncOut.createVariable("cer","f8",("along_track", "across_track"))
-        cer[:,:] = data[:,:,4]
+        cer[:,:] = data[:,:,5]
         
         cwp = ncOut.createVariable("cwp","f8",("along_track", "across_track"))
-        cwp[:,:] = data[:,:,5]
+        cwp[:,:] = data[:,:,6]
         
         ctp = ncOut.createVariable("ctp","f8",("along_track", "across_track"))
-        ctp[:,:] = data[:,:,6]
+        ctp[:,:] = data[:,:,7]
         
         ctp_corrected = ncOut.createVariable("ctp_corrected","f8",("along_track", "across_track"))
-        ctp_corrected[:,:] = data[:,:,7]
+        ctp_corrected[:,:] = data[:,:,8]
         
         cth = ncOut.createVariable("cth","f8",("along_track", "across_track"))
-        cth[:,:] = data[:,:,8]
+        cth[:,:] = data[:,:,9]
         
         cth_corrected = ncOut.createVariable("cth_corrected","f8",("along_track", "across_track"))
-        cth_corrected[:,:] = data[:,:,9]
+        cth_corrected[:,:] = data[:,:,10]
         
         ctt = ncOut.createVariable("ctt","f8",("along_track", "across_track"))
-        ctt[:,:] = data[:,:,10]
+        ctt[:,:] = data[:,:,11]
 
         ctt_corrected = ncOut.createVariable("ctt_corrected","f8",("along_track", "across_track"))
-        ctt_corrected[:,:] = data[:,:,11]
+        ctt_corrected[:,:] = data[:,:,12]
 
         cc_total = ncOut.createVariable("cc_total","f8",("along_track", "across_track"))
-        cc_total[:,:] = data[:,:,12]
+        cc_total[:,:] = data[:,:,13]
 
         phase = ncOut.createVariable("phase","f8",("along_track", "across_track"))
-        phase[:,:] = data[:,:,13]
+        phase[:,:] = data[:,:,14]
 
         cldtype = ncOut.createVariable("cldtype", "f8", ("along_track", "across_track"))
-        cldtype[:, :] = data[:, :, 14]
+        cldtype[:, :] = data[:, :, 15]
 
         nisemask = ncOut.createVariable("nisemask", "f8", ("along_track", "across_track"))
-        nisemask[:, :] = data[:, :, 15]
+        nisemask[:, :] = data[:, :, 16]
 
     else:
 
@@ -196,7 +199,7 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
 
     # variables to be resampled
     if primary:
-        variables = ["time", "solar_zenith_view_no1", "satellite_zenith_view_no1", "cot", "cer", "cwp",
+        variables = ["time", "solar_zenith_view_no1", "satellite_zenith_view_no1", "cot", "cot_uncertainty", "cer", "cwp",
                      "ctp", "ctp_corrected", "cth", "cth_corrected", "ctt", "ctt_corrected", "cc_total",
                      "phase", "cldtype", "nisemask"]
     else:
@@ -655,13 +658,17 @@ def draw_screen_poly(lats, lons, m):
     poly = Polygon(xy, color='red', alpha=1., fill=False, linewidth=2.)
     plt.gca().add_patch(poly)
     
-def collocateCciAndCalipso(cci, calipso, maxDistance):
+def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     print "collocating CCI and Calipso"
     cciLon = np.ma.compressed(cci.lon)
     cciLat = np.ma.compressed(cci.lat)
     cciCot = np.ma.compressed(cci.cot)
-    cciCtt = np.ma.compressed(cci.ctt_corrected)
-    cciCtp = np.ma.compressed(cci.ctp_corrected)
+    if corrected:
+        cciCtt = np.ma.compressed(cci.ctt_corrected)
+        cciCtp = np.ma.compressed(cci.ctp_corrected)
+    else:
+        cciCtt = np.ma.compressed(cci.ctt)
+        cciCtp = np.ma.compressed(cci.ctp)
     cciCph = np.ma.compressed(cci.phase)
     cciCty = np.ma.compressed(cci.cldtype)
     cciNise = np.ma.compressed(cci.nisemask)
@@ -866,7 +873,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance):
            'calipsoCOD': colCodCalipso, 'calipsoIce': colIceCalipso, 'calipsoTop': colTopCalipso, 'calipsoTyp': colTypCalipso}
     return out
 
-def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime):
+def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime, plotCot):
 
     print "Plotting collocated data for Calipso and CCI."
 
@@ -883,122 +890,69 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     minX = plotLat0.min()
     maxX = plotLat0.max()
     """CTP"""
-    ax = fig.add_subplot(2, 1, 1)  # 3 plots, vertically arranged
+    ax = fig.add_subplot(2, 1, 1)  # several plots, vertically arranged
     width = (max(plotLat2)-min(plotLat2)) / len(plotLat2) # bar width
     ax.set_xlim([minX - width * 0.5, maxX + width * 0.5])
+    ax.set_ylim([100, 1000])
     plt.gca().invert_yaxis()
-    #ax.scatter(plotLat2, N18.get('calipsoCtp2'), label="Calipso [COT > 1]", c="pink")
+    if not plotCot:
+        plot_topography(N18, plotLat0, ax)
+        ax.set_xlabel("Latitude")
     alpha = 1
     ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp0') - N18.get('calipsoCtpBot0'), bottom=N18.get('calipsoCtpBot0'), width=width,
-           color="lavenderblush", alpha=alpha, label="Calipso [COT > 0]")
+           color="lavenderblush", alpha=alpha, label="Calipso [COT > 0]", zorder=3)
     ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp1') - N18.get('calipsoCtpBot1'), bottom=N18.get('calipsoCtpBot1'), width=width,
-           color="lightpink", alpha=alpha, label="Calipso [COT > 0.15]")
+           color="lightpink", alpha=alpha, label="Calipso [COT > 0.15]", zorder=3)
     ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp2') - N18.get('calipsoCtpBot2'), bottom=N18.get('calipsoCtpBot2'), width=width,
-           color="thistle", alpha=alpha, label="Calipso [COT > 1]")
-    ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR", c="r", zorder=10)
+           color="thistle", alpha=alpha, label="Calipso [COT > 1]", zorder=3)
+    ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="orange", zorder=10)
     ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="aqua", zorder=10)
-    ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="yellow", zorder=10)
+    ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR", c="r", zorder=10)
     ax.set_ylabel("CTP [hPa]")
     handles, labels = ax.get_legend_handles_labels()
-    order=[0,1,2,3,4,5]
+    order=[2,1,0,3,4,5]
     labels = [ labels[i] for i in order]
     handles = [handles[i] for i in order]
-    loc = 3
     if sceneTime == '07222058':
         loc = 2
+    elif sceneTime == '07270810':
+        loc = 1
+    elif sceneTime == '07221915':
+        loc = 1
+    else:
+        loc = 3
     leg = ax.legend(handles=handles, labels=labels, loc=loc, frameon=True, fancybox=True, fontsize=11)
     leg.get_frame().set_alpha(0.5)
+
     """COT"""
-    ax = fig.add_subplot(2, 1, 2)
-    ax.set_ylim([0, 50])
-    plt.gca().invert_yaxis()
-    ax.set_xlim([minX - width * 0.5, maxX + width * 0.5])
-    ax.scatter(plotLat0, N18.get('cciCot'), c="r", zorder=10)
-    ax.scatter(plotLat0, ENV.get('cciCot'), c="aqua", zorder=10)
-    ax.scatter(plotLat0, MYD.get('cciCot'), c="yellow", zorder=10)
-    foo = np.where(N18.get('calipsoCOD')==0, np.nan, N18.get('calipsoCOD'))
-    ax.scatter(plotLat0, foo, c="thistle", zorder=10)
-    ax.set_ylabel("COT")
-    plt.xlabel("Latitude")
-    """Surface elevation, snow/ice, surface type"""
-    topography = N18.get('calipsoTop') * 1000.
-    topoMax = topography.max()
-    ice = N18.get('calipsoIce')
-    # calipso ice/snow values: 1-100, 101, 102 (not used), 103
-    iceNise = N18.get('cciNise')
-    surface_type = N18.get('calipsoTyp')
-    ice_masked = ma.masked_inside(ice, 1, 103)
-    sea_masked = ma.masked_equal(surface_type, 17)
-    topography_masked = topography[ice_masked.mask].copy()
-    lat_masked = plotLat0[ice_masked.mask].copy()
-    ax2 = ax.twinx()
-    ax2.set_ylabel("surface elevation [m]")
-    ax2.set_xlim([minX - width * 0.5, maxX + width * 0.5])
-    ax2.set_ylim(0, topoMax * 5)
-    if topoMax < 500.:
-        yInterval = 100
-    else:
-        yInterval = 200.
-    yticks = np.arange(0, topoMax, yInterval)
-    lw = 5.
-    ax2.fill_between(plotLat0, topography+10, facecolor="green", alpha=0.5, zorder=1, linewidth=lw, edgecolor="")
-
-    # sea
-    if sea_masked.count() < len(sea_masked):
-        splits = get_mask_segments_start_and_length(sea_masked.mask)
-        for start, length in splits:
-            x = plotLat0[start:start+length]
-            y = topography[start:start+length]
-            ax2.plot(x, y, c="blue", linewidth=lw, zorder=2)
-
-    # ice
-    if ice_masked.count() < len(ice_masked):
-        splits = get_mask_segments_start_and_length(ice_masked.mask)
-        for start, length in splits:
-            x = plotLat0[start:start+length]
-            y = topography[start:start+length]
-            ax2.plot(x, y, c="grey", linewidth=lw, zorder=2)
-
-    ax2.set_yticks(yticks)
+    if plotCot:
+        ax = fig.add_subplot(2, 1, 2)
+        ax.set_ylim([0, 50])
+        plt.gca().invert_yaxis()
+        ax.set_xlim([minX - width * 0.5, maxX + width * 0.5])
+        plot_topography(N18, plotLat0, ax)
+        ax.scatter(plotLat0, MYD.get('cciCot'), c="orange", zorder=10)
+        ax.scatter(plotLat0, ENV.get('cciCot'), c="aqua", zorder=10)
+        ax.scatter(plotLat0, N18.get('cciCot'), c="r", zorder=10)
+        foo = np.where(N18.get('calipsoCOD')==0, np.nan, N18.get('calipsoCOD'))
+        ax.scatter(plotLat0, foo, c="thistle", zorder=10)
+        ax.set_ylabel("COT")
+        ax.set_xlabel("Latitude")
 
     """CLOUD PHASE TABLE"""
-    cphCal0 = np.array(N18.get('calipsoPhase0'))
-    cphCal0 = cphCal0.astype(float)
-    cphCal0[cphCal0 == 1] = 999.
-    cphCal0[cphCal0 == 2] = 1.
-    cphCal0[cphCal0 == 999.] = 2.
-    cphCal0[cphCal0 == 3] = 2.
-    cphCal0[cphCal0 == 0.] = 999.
-    cphCal1 = np.array(N18.get('calipsoPhase1'))
-    cphCal1 = cphCal1.astype(float)
-    cphCal1[cphCal1 == 1] = 999.
-    cphCal1[cphCal1 == 2] = 1.
-    cphCal1[cphCal1 == 999.] = 2.
-    cphCal1[cphCal1 == 3] = 2.
-    cphCal1[cphCal1 == 0.] = 999.
-    cphCal2 = np.array(N18.get('calipsoPhase2'))
-    cphCal2 = cphCal2.astype(float)
-    cphCal2[cphCal2 == 1] = 999.
-    cphCal2[cphCal2 == 2] = 1.
-    cphCal2[cphCal2 == 999.] = 2.
-    cphCal2[cphCal2 == 3] = 2.
-    cphCal2[cphCal2 == 0.] = 999.
+    cphCal0 = correct_calipso_phase(N18.get('calipsoPhase0'))
+    cphCal1 = correct_calipso_phase(N18.get('calipsoPhase1'))
+    cphCal2 = correct_calipso_phase(N18.get('calipsoPhase2'))
     cty0 = np.array(N18.get('calipsoType0'))
     cty1 = np.array(N18.get('calipsoType1'))
     cty2 = np.array(N18.get('calipsoType2'))
-    cphN18 = N18.get('cciCph')
-    cphN18[cphN18 == 0.] = np.nan
-    cphN18[cphN18 > 2.] = np.nan
+    cphN18 = correct_cci_phase(N18.get('cciCph'))
     ctyN18 = np.round(N18.get('cciCty'), 0)
     ctyN18[ctyN18 == 0.] = np.nan
-    cphMYD = MYD.get('cciCph')
-    cphMYD[cphMYD == 0.] = np.nan
-    cphMYD[cphMYD > 2.] = np.nan
+    cphMYD = correct_cci_phase(MYD.get('cciCph'))
     ctyMYD = np.round(MYD.get('cciCty'), 0)
     ctyMYD[ctyMYD == 0.] = np.nan
-    cphENV = ENV.get('cciCph')
-    cphENV[cphENV == 0.] = np.nan
-    cphENV[cphENV > 2.] = np.nan
+    cphENV = correct_cci_phase(ENV.get('cciCph'))
     ctyENV = np.round(ENV.get('cciCty'), 0)
     ctyENV[ctyENV == 0.] = np.nan
     df = DataFrame([cphCal0, cphCal1, cphCal2, cphN18, cphMYD, cphENV])
@@ -1015,6 +969,7 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     cell_colours[np.isnan(vals), 0:3] = 1.
     cell_colours[abs(cell_colours) > 900.] = 0.5
     cell_colours[cell_colours[0:3,:,0]==0.5, 1] = 0.5
+    cell_colours[:,:,3] = 0.8
     row_labels = ["Calipso [COT > 0]", "Calipso [COT > 0.15]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
     cell_text = np.chararray((len(row_labels), len(plotLat0)))
     cell_text[0,] = cty0
@@ -1039,8 +994,6 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     table._cells[(3, -1)]._text.set_color('black')
     table._cells[(4, -1)]._text.set_color('black')
     table._cells[(5, -1)]._text.set_color('black')
-    #table.set_fontsize(20)
-    #table.scale(1, 2)
     """save figure"""
     plt.savefig(figurePath, bbox_inches='tight')
 
@@ -1062,19 +1015,74 @@ def get_mask_segments_start_and_length(mask):
     k = 0
     splits = []
     is_true = False
+    if mask[-1]:
+        mask = np.append(mask, False)
     for j in mask:
         if j and not is_true:
             start = k
             is_true = True
         elif not j and is_true:
             length = k - start
-            is_true =False
+            is_true = False
             splits.append((start, length))
         k += 1
     if k == len(mask) and is_true:
         splits.append((start, length))
     return splits
 
-    
-    
+def correct_calipso_phase(phase_in):
+    phase_out = np.array(phase_in)
+    phase_out = phase_out.astype(float)
+    phase_out[phase_out == 1] = 999.
+    phase_out[phase_out == 2] = 1.
+    phase_out[phase_out == 999.] = 2.
+    phase_out[phase_out == 3] = 2.
+    phase_out[phase_out == 0.] = 999.
+    return phase_out
 
+def correct_cci_phase(phase):
+    phase[phase == 0.] = np.nan
+    phase[phase > 2.] = np.nan
+    return phase
+
+def plot_topography(data, lat, ax):
+    """Surface elevation, snow/ice, surface type"""
+    topography = data.get('calipsoTop') * 1000.
+    topoMax = topography.max()
+    ice = data.get('calipsoIce')
+    # calipso ice/snow values: 1-100, 101, 102 (not used), 103
+    iceNise = data.get('cciNise')
+    surface_type = data.get('calipsoTyp')
+    ice_masked = ma.masked_inside(ice, 1, 103)
+    sea_masked = ma.masked_equal(surface_type, 17)
+    topography_masked = topography[ice_masked.mask].copy()
+    lat_masked = lat[ice_masked.mask].copy()
+    ax2 = ax.twinx()
+    ax2.set_ylabel("surface elevation [m]")
+    minX = lat.min()
+    maxX = lat.max()
+    width = (maxX - minX) / len(lat) # bar width
+    ax2.set_xlim([minX - width * 0.5, maxX + width * 0.5])
+    ax2.set_ylim(0, topoMax * 5)
+    if topoMax < 500.:
+        yInterval = 100
+    else:
+        yInterval = 200.
+    yticks = np.arange(0, topoMax, yInterval)
+    lw = 5.
+    ax2.fill_between(lat, topography+10, facecolor="green", alpha=0.5, zorder=1, linewidth=lw, edgecolor="")
+    # sea
+    if sea_masked.count() < len(sea_masked):
+        splits = get_mask_segments_start_and_length(sea_masked.mask)
+        for start, length in splits:
+            x = lat[start:start+length]
+            y = topography[start:start+length]
+            ax2.plot(x, y, c="blue", linewidth=lw, zorder=1)
+    # ice
+    if ice_masked.count() < len(ice_masked):
+        splits = get_mask_segments_start_and_length(ice_masked.mask)
+        for start, length in splits:
+            x = lat[start:start+length]
+            y = topography[start:start+length]-10
+            ax2.plot(x, y, c="grey", linewidth=3, zorder=1)
+    ax2.set_yticks(yticks)

@@ -1,6 +1,4 @@
-#!/usr/bin/python
-
-#/data/osus/Enthought/User/bin/python2.7
+#!/data/osus/Enthought/User/bin/python2.7
 
 from analyseCCI import CCI
 import numpy as np
@@ -15,31 +13,46 @@ from sys import argv
 if len(argv) > 1:
     delLon = argv[1]
     delLat = argv[2]
-    doRGB  = argv[3]
     if argv[3] == "True":
         doRGB = True
     elif argv[3] == "False":
         doRGB = False
     else:
-        print "ERROR: 3rd argument should be [True/False]."
+        print "ERROR: 3rd argument doRGB should be [True/False]."
         sys.exit()
     sceneTime = argv[4] # 1) 07221915 2) 07270810 3) 07230021 4) 07222058
-    if argv[4] != '07221915' and argv[4] != '07270810' and argv[4] != '07230021' and sceneTime != '07222058':
+    if argv[4] != '07221915' and argv[4] != '07270810' and argv[4] != '07230021' and argv[4] != '07222058':
         print "ERROR: choose correct study date ('07221915' or '07270810' or '07230021' or '07222058')"
         sys.exit()
+    if argv[5] == "True":
+        corrected = True
+    elif argv[5] == "False":
+        corrected = False
+    else:
+        print "ERROR: 5th argument corrected should be [True/False]."
+        sys.exit()
+    if argv[6] == "True":
+        plotCot = True
+    elif argv[6] == "False":
+        plotCot = False
+    else:
+        print "ERROR: 6th argument plotCot should be [True/False]."
+        sys.exit()
 else:
-    delLat = "0.1"
-    delLon = "0.1"
-    doRGB = False
-    sceneTime = '07222058'
+    delLat = "0.5"
+    delLon = "0.5"
+    doRGB = True
+    sceneTime = '07221915'
+    corrected = True
+    plotCot = False
 
 month = sceneTime[0:2]
 day = sceneTime[2:4]
 hour = sceneTime[4:6]
 minute = sceneTime[6:8]
 
-data_folder = "/mnt/DATA/DWD/ESA_CCI/data/" #"/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/data/"
-figuresDir = "/mnt/DATA/DWD/ESA_CCI/paper/figures/" #"/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
+data_folder = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/data/"
+figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
 
 calipsoPath1km = data_folder + "calipso_1km_" + sceneTime + ".hdf"
 calipsoPath5km = data_folder + "calipso_5km_" + sceneTime + ".hdf"
@@ -228,13 +241,22 @@ boxDiag = (boxLonWidth**2 + boxLatWidth**2)**0.5
 maxDistance = boxDiag / 2.
 """The maximum distance is input to the collocation method,
     returning collocated CCI and Calipso data."""
-collocateN18 = collocateCciAndCalipso(N18PrimaryResampled, calipsoData, maxDistance)
-collocateMYD = collocateCciAndCalipso(MYDPrimaryResampled, calipsoData, maxDistance)
-collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDistance)
+collocateN18 = collocateCciAndCalipso(N18PrimaryResampled, calipsoData, maxDistance, corrected)
+collocateMYD = collocateCciAndCalipso(MYDPrimaryResampled, calipsoData, maxDistance, corrected)
+collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDistance, corrected)
 
 """Plot collocated data for COT, CTP, and CTT."""
-figurePath = figuresDir + "calipsoVsCci_" + sceneTime + ".png"
-plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime)
+figurePath = figuresDir + "calipsoVsCci_" + sceneTime
+if plotCot:
+    figurePath += "_cot"
+else:
+    figurePath += "_nocot"
+if corrected:
+    figurePath += "_correctedCtp"
+else:
+    figurePath += "_uncorrectedCtp"
+figurePath += ".png"
+plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime, plotCot)
 
 N18PrimaryResampled.maskAllVariables(ReflMask)
 N18SecondaryResampled.maskAllVariables(ReflMask)
