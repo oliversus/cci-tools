@@ -13,6 +13,9 @@ import time
 from math import radians, cos, sin, asin, sqrt
 from pandas import DataFrame, Index
 import copy
+import os
+from operator import itemgetter
+import globals
 
 def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         
@@ -336,7 +339,6 @@ def plotVariable(CCIpri, CCIsec,
     if cmin is not None and cmax is not None:
         forColorbar.set_clim(vmin = cmin, vmax = cmax)
     map.colorbar(forColorbar, location = 'right')
-    
 
     # add centre point
     x, y = map(lon_0, lat_0)
@@ -362,6 +364,27 @@ def plotVariable(CCIpri, CCIsec,
 def plotCCI(priN18, priMYD, boundingBox, centrePoint, variable, platform,
             secN18 = None, secMYD = None, input = None, colourMin = None, 
             colourMax = None, mask = None):
+
+    diff = False
+    # output figure name:
+    if platform == "NOAA18":
+        CCI_filename = os.path.basename(priN18.getPath())
+    elif platform == "MYD":
+        CCI_filename = os.path.basename(priMYD.getPath())
+    elif platform == "ENV":
+        CCI_filename = os.path.basename(priENV.getPath())
+    else:
+        CCI_filename = os.path.basename(priN18.getPath())
+        diff = True
+
+    sep = "_"; suffix = ".png"
+    foo = list(itemgetter(3, 4, 6, 7)(CCI_filename.replace(".nc", "_nc").split("_")).__add__((variable,)))
+    if diff:
+        foo[0] = platform
+    figure_name = globals.figuresDir + sep.join(foo) + suffix
+
+    # define figure size
+    #fig1 = plt.figure(figsize=(10, 10))
 
     # projection type: stereographic
     lat_0     = centrePoint[0]
@@ -420,7 +443,7 @@ def plotCCI(priN18, priMYD, boundingBox, centrePoint, variable, platform,
                  llcrnrlat = llcrnrlat, urcrnrlat = urcrnrlat, llcrnrlon = -180, urcrnrlon = urcrnrlon,
                  cmin = cmin, cmax = cmax,
                  mask = mask)
-    plt.draw()
+    plt.savefig(figure_name, bbox_inches='tight')
 
 def buildRGB(primaryData, secondaryData, platform):
 
@@ -542,7 +565,7 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
 
     # draw coasts and fill continents
     map.drawcoastlines(linewidth = 0.5)
-    fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder = 0)
+    fillContinents = map.fillcontinents(color='#C0C0C0', lake_color='#7093DB', zorder=0)
     
     # draw grid lines
     gridSpacing = 5.
@@ -556,7 +579,7 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
         labels=[False, False, False, True])
         
     # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
-    mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple, latlon = True, linewidth = 0.05, clip_on = True)
+    mesh = map.pcolormesh(lon, lat, dummy, color=colourTuple, latlon=True, linewidth=0.05, clip_on=True)
     mesh.set_array(None)
     plt.savefig(figureName, bbox_inches='tight')
 

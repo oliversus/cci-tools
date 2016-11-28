@@ -4,11 +4,16 @@ from analyseCCI import CCI
 import numpy as np
 from CCITools import buildRGB, plotRGB,\
     plotRGBMulti, greatCircle, collocateCciAndCalipso, \
-    plotCciCalipsoCollocation
+    plotCciCalipsoCollocation, plotCCI, minMax
 import sys
 import numpy.ma as ma
 from pyhdf.SD import SD, SDC
 from sys import argv
+import math
+import matplotlib.pyplot as plt
+import globals
+
+globals.init()
 
 if len(argv) > 1:
     delLon = argv[1]
@@ -38,14 +43,23 @@ if len(argv) > 1:
     else:
         print "ERROR: 6th argument plotCot should be [True/False]."
         sys.exit()
+    if argv[7] == "True":
+        plotCalipso = True
+    elif argv[7] == "False":
+        plotCalipso = False
+    else:
+        print "ERROR: 7th argument plotCot should be [True/False]."
+        sys.exit()
 else:
     delLat = "0.5"
     delLon = "0.5"
-    doRGB = True
-    sceneTime = '07221915'
+    doRGB = False
+    sceneTime = '07270810'
     corrected = True
     plotCot = False
+    plotCalipso = True
 
+delLat_delLon = delLat + "_" + delLon
 month = sceneTime[0:2]
 day = sceneTime[2:4]
 hour = sceneTime[4:6]
@@ -126,6 +140,7 @@ secENV = CCI(pathL2SecENV)
 print "Reading resampled N18 data"
 pathL2N18PrimaryResampled = data_folder + N18PrimaryResampledName
 N18PrimaryResampled = CCI(pathL2N18PrimaryResampled)
+N18Masked = CCI(pathL2N18PrimaryResampled)
 pathL2N18SecondaryResampled = data_folder + N18SecondaryResampledName
 N18SecondaryResampled = CCI(pathL2N18SecondaryResampled)
 
@@ -145,24 +160,24 @@ ENVSecondaryResampled = CCI(pathL2ENVSecondaryResampled)
 
 # subset borders in lat/lon
 if sceneTime == '07221915':
-    centrePoint = [64.5, -102.5]
+    centrePoint = [72.5, -111.]
     boundingBox = [-179., 0., 40, 90]
     poly_lats = [58.5, 78, 83.5, 63]
     poly_lons = [-121, -73, -63., -128.5]
 elif sceneTime == '07270810':
     centrePoint = [73., 55.]
     boundingBox = [-10., 130., 45., 90.]
-    poly_lats = [63, 79., 85, 65]
-    poly_lons = [45, 90, 70, 30]
+    poly_lats = [62.5, 78., 83.5, 63.5]
+    poly_lons = [43, 105, 110, 37.5]
 elif sceneTime == '07230021':
     centrePoint = [71., 173.]
     boundingBox = [140., -160., 45., 90.]
     poly_lats = [63, 79., 85, 65]
     poly_lons = [45, 90, 70, 30]
 elif sceneTime == '07222058':
-    centrePoint = [74., -143.]
+    centrePoint = [62., -125.]
     boundingBox = [-180., -100., 45., 90.]
-    poly_lats = [63, 79., 85, 65]
+    poly_lats = [63, 72.5, 85, 65]
     poly_lons = [45, 90, 70, 30]
 
 # get all variables
@@ -170,6 +185,7 @@ MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox=boundingBox)
 secMYD.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=MYDSlice)
 print "Getting all variables: N18 resampled"
 N18PrimaryResampled.getAllVariables()
+N18Masked.getAllVariables()
 N18SecondaryResampled.getAllVariables()
 print "Getting all variables: MODIS resampled"
 MYDPrimaryResampled.getAllVariables()
@@ -190,6 +206,18 @@ MYDReflMask = MYDSecondaryResampled.reflectance_in_channel_no_1.mask
 ENVReflMask = ENVSecondaryResampled.reflectance_in_channel_no_1.mask
 ReflMask = N18ReflMask + MYDReflMask + ENVReflMask
 
+N18Masked.maskAllVariables(ReflMask)
+poly_lats = [62.5, 78., 83.5, 63.5]
+poly_lats[0] = N18Masked.lat.min()
+#poly_lats[1] = min(N18Masked.lat[N18Masked.lon == N18Masked.lon.max()])
+poly_lats[2] = N18Masked.lat.max()
+poly_lats[3] = max(N18Masked.lat[N18Masked.lon == N18Masked.lon.min()])
+poly_lons = [43, 105, 110, 37.5]
+poly_lons[0] = min(N18Masked.lon[N18Masked.lat == N18Masked.lat.min()])
+poly_lons[1] = N18Masked.lon.max()
+poly_lons[2] = max(N18Masked.lon[N18Masked.lat == N18Masked.lat.max()])
+poly_lons[3] = N18Masked.lon.min()
+
 #################################################################################################
 # plot variables and calculate statistics
 # 1) compare CCI products from N18, MYD, and AATSR
@@ -199,21 +227,21 @@ if doRGB:
     print "RGB: started."
     platform = "MYD"
     colourTupleMYD = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled, platform)
-    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
+    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
     platform = "N18"
     colourTupleN18 = buildRGB(N18PrimaryResampled, N18SecondaryResampled, platform)
-    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
+    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
     platform = "ENV"
     colourTupleENV = buildRGB(ENVPrimaryResampled, ENVSecondaryResampled, platform)
-    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + ".png"
+    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleENV, ENVSecondaryResampled.lat, ENVSecondaryResampled.lon, ENVSecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
     colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleENV[..., np.newaxis]), axis=2)
-    RGBName = figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + ".png"
+    RGBName = figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, poly_lats, poly_lons, N18SecondaryResampled.reflectance_in_channel_no_1,
                 calipsoLat, calipsoLon,
                 centrePoint[0], centrePoint[1])    
@@ -256,7 +284,8 @@ if corrected:
 else:
     figurePath += "_uncorrectedCtp"
 figurePath += ".png"
-plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime, plotCot)
+if plotCalipso:
+    plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime, plotCot)
 
 N18PrimaryResampled.maskAllVariables(ReflMask)
 N18SecondaryResampled.maskAllVariables(ReflMask)
@@ -265,7 +294,7 @@ MYDSecondaryResampled.maskAllVariables(ReflMask)
 ENVPrimaryResampled.maskAllVariables(ReflMask)
 ENVSecondaryResampled.maskAllVariables(ReflMask)
 
-sys.exit()
+#sys.exit()
     
     # b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
 timeDiff = ((MYDPrimaryResampled.time - math.floor(MYDPrimaryResampled.time.min())) \
@@ -295,36 +324,41 @@ if True:
         # linear regression of RES with COT or TIMEDIFF
             # scatter plot RES vs COT/TIMEDIFF?
 
-sys.exit()
+#sys.exit()
 
 print "Plotting data."
-variable = "phase"
 
 # 1a) RGB, ideally highly resolved MODIS with 0.6, 0.8, and 1.6 (1.6 has missing scan lines though) 
 
 # 1b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
-
+variable = "lat"
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
-        'NOAA18', mask = AllSensorsMaskCombined) 
+        'NOAA18', mask = ReflMask)
 print "N18 " + variable + " mean = " + str(round(getattr(N18PrimaryResampled, variable).mean(), 2))
 print "N18 " + variable + " stdev = " + str(round(getattr(N18PrimaryResampled, variable).std(), 2))
+
+variable = "lon"
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
-        'MYD', mask = AllSensorsMaskCombined) 
-print "MYD " + variable + " mean = " + str(round(getattr(MYDPrimaryResampled, variable).mean(), 2))
-print "MYD " + variable + " stdev = " + str(round(getattr(MYDPrimaryResampled, variable).std(), 2))
-input = abs(getattr(MYDPrimaryResampled, variable) - getattr(N18PrimaryResampled, variable))
-print [round(x, 2) for x in minMax(input)]
-plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
-        'MYDResampledMinusNOAA18', input = input, mask = input.mask) 
-input.mask = input.mask + ma.masked_greater(input, input.mean() + input.std() * 2).mask
-plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
-        'MYDResampledMinusNOAA18', input = input, mask = input.mask) 
-print "MYD-N18 " + variable + " mean = " + str(round(input.mean(), 2))
-print "MYD-N18 " + variable + " stdev = " + str(round(input.std(), 2))
+        'NOAA18', mask = ReflMask)
+print "N18 " + variable + " mean = " + str(round(getattr(N18PrimaryResampled, variable).mean(), 2))
+print "N18 " + variable + " stdev = " + str(round(getattr(N18PrimaryResampled, variable).std(), 2))
+
+# plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
+#         'MYD', mask = AllSensorsMaskCombined)
+# print "MYD " + variable + " mean = " + str(round(getattr(MYDPrimaryResampled, variable).mean(), 2))
+# print "MYD " + variable + " stdev = " + str(round(getattr(MYDPrimaryResampled, variable).std(), 2))
+# input = abs(getattr(MYDPrimaryResampled, variable) - getattr(N18PrimaryResampled, variable))
+# print [round(x, 2) for x in minMax(input)]
+# plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
+#         'MYDResampledMinusNOAA18', input = input, mask = input.mask)
+# input.mask = input.mask + ma.masked_greater(input, input.mean() + input.std() * 2).mask
+# plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
+#         'MYDResampledMinusNOAA18', input = input, mask = input.mask)
+# print "MYD-N18 " + variable + " mean = " + str(round(input.mean(), 2))
+# print "MYD-N18 " + variable + " stdev = " + str(round(input.std(), 2))
 # plt.scatter(MYDPrimaryResampled.ctp, input)
 # plt.draw()
 # plt.scatter(timeDiff, input)
 # plt.draw()
-plt.show()
 
 #stats.ttest_ind(getattr(N18PrimaryResampled, variable).ravel(), getattr(MYDPrimaryResampled, variable).ravel())

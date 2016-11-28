@@ -24,7 +24,7 @@ else:
     delLat = 0.5
     delLon = 0.5
     primary = True
-    sceneTime = '07221915'
+    sceneTime = '07270810'
 
 month = sceneTime[0:2]
 day = sceneTime[2:4]
