@@ -51,8 +51,8 @@ if len(argv) > 1:
         print "ERROR: 7th argument plotCot should be [True/False]."
         sys.exit()
 else:
-    delLat = "0.5"
-    delLon = "0.5"
+    delLat = "0.1"
+    delLon = "0.1"
     doRGB = False
     sceneTime = '07270810'
     corrected = True
@@ -217,6 +217,18 @@ poly_lons[0] = min(N18Masked.lon[N18Masked.lat == N18Masked.lat.min()])
 poly_lons[1] = N18Masked.lon.max()
 poly_lons[2] = max(N18Masked.lon[N18Masked.lat == N18Masked.lat.max()])
 poly_lons[3] = N18Masked.lon.min()
+
+if sceneTime == '07222058':
+    poly_lats[1] = 72.5
+    poly_lons[1] = -101
+elif sceneTime == '07221915':
+    poly_lats[1] = 78
+    poly_lons[1] = -73
+elif sceneTime == '07270810':
+    poly_lats[0] = 60
+    poly_lons[0] = 45
+    poly_lats[1] = 78
+    poly_lons[1] = 95.5
 
 #################################################################################################
 # plot variables and calculate statistics

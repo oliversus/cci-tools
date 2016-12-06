@@ -43,8 +43,8 @@ def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         cot = ncOut.createVariable("cot","f8",("along_track", "across_track"))
         cot[:,:] = data[:,:,3]
 
-        cot = ncOut.createVariable("cot_uncertainty","f8",("along_track", "across_track"))
-        cot[:,:] = data[:,:,4]
+        cot_unc = ncOut.createVariable("cot_uncertainty","f8",("along_track", "across_track"))
+        cot_unc[:,:] = data[:,:,4]
 
         cer = ncOut.createVariable("cer","f8",("along_track", "across_track"))
         cer[:,:] = data[:,:,5]
@@ -54,33 +54,42 @@ def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         
         ctp = ncOut.createVariable("ctp","f8",("along_track", "across_track"))
         ctp[:,:] = data[:,:,7]
+
+        ctp_unc = ncOut.createVariable("ctp_uncertainty","f8",("along_track", "across_track"))
+        ctp_unc[:,:] = data[:,:,8]
         
         ctp_corrected = ncOut.createVariable("ctp_corrected","f8",("along_track", "across_track"))
-        ctp_corrected[:,:] = data[:,:,8]
+        ctp_corrected[:,:] = data[:,:,9]
         
         cth = ncOut.createVariable("cth","f8",("along_track", "across_track"))
-        cth[:,:] = data[:,:,9]
-        
+        cth[:,:] = data[:,:,10]
+
+        cth_unc = ncOut.createVariable("cth_uncertainty","f8",("along_track", "across_track"))
+        cth_unc[:,:] = data[:,:,11]
+
         cth_corrected = ncOut.createVariable("cth_corrected","f8",("along_track", "across_track"))
-        cth_corrected[:,:] = data[:,:,10]
+        cth_corrected[:,:] = data[:,:,12]
         
         ctt = ncOut.createVariable("ctt","f8",("along_track", "across_track"))
-        ctt[:,:] = data[:,:,11]
+        ctt[:,:] = data[:,:,13]
+
+        ctt_uncertainty = ncOut.createVariable("ctt_uncertainty","f8",("along_track", "across_track"))
+        ctt_uncertainty[:,:] = data[:,:,14]
 
         ctt_corrected = ncOut.createVariable("ctt_corrected","f8",("along_track", "across_track"))
-        ctt_corrected[:,:] = data[:,:,12]
+        ctt_corrected[:,:] = data[:,:,15]
 
         cc_total = ncOut.createVariable("cc_total","f8",("along_track", "across_track"))
-        cc_total[:,:] = data[:,:,13]
+        cc_total[:,:] = data[:,:,16]
 
         phase = ncOut.createVariable("phase","f8",("along_track", "across_track"))
-        phase[:,:] = data[:,:,14]
+        phase[:,:] = data[:,:,17]
 
         cldtype = ncOut.createVariable("cldtype", "f8", ("along_track", "across_track"))
-        cldtype[:, :] = data[:, :, 15]
+        cldtype[:, :] = data[:, :, 18]
 
         nisemask = ncOut.createVariable("nisemask", "f8", ("along_track", "across_track"))
-        nisemask[:, :] = data[:, :, 16]
+        nisemask[:, :] = data[:, :, 19]
 
     else:
 
@@ -203,7 +212,7 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
     # variables to be resampled
     if primary:
         variables = ["time", "solar_zenith_view_no1", "satellite_zenith_view_no1", "cot", "cot_uncertainty", "cer", "cwp",
-                     "ctp", "ctp_corrected", "cth", "cth_corrected", "ctt", "ctt_corrected", "cc_total",
+                     "ctp", "ctp_uncertainty", "ctp_corrected", "cth", "cth_uncertainty", "cth_corrected", "ctt", "ctt_uncertainty", "ctt_corrected", "cc_total",
                      "phase", "cldtype", "nisemask"]
     else:
         if sensor == "N18":
@@ -686,12 +695,14 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     cciLon = np.ma.compressed(cci.lon)
     cciLat = np.ma.compressed(cci.lat)
     cciCot = np.ma.compressed(cci.cot)
+    cciCotUnc = np.ma.compressed(cci.cot_uncertainty)
     if corrected:
         cciCtt = np.ma.compressed(cci.ctt_corrected)
         cciCtp = np.ma.compressed(cci.ctp_corrected)
     else:
         cciCtt = np.ma.compressed(cci.ctt)
         cciCtp = np.ma.compressed(cci.ctp)
+    cciCtpUnc = np.ma.compressed(cci.ctp_uncertainty)
     cciCph = np.ma.compressed(cci.phase)
     cciCty = np.ma.compressed(cci.cldtype)
     cciNise = np.ma.compressed(cci.nisemask)
@@ -722,8 +733,10 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     """initialise collocated output variables"""
     colDist = []
     colCot = []
+    colCotUnc = []
     colCtt = []
     colCtp = []
+    colCtpUnc = []
     colCph = []
     colCty = []
     colNise = []
@@ -775,8 +788,10 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
             """" get Calipso feature flag, looping over atmosphere layers"""
             colDist.append(calipsoToBox)
             colCot.append(cciCot[targetIndex])
+            colCotUnc.append(cciCotUnc[targetIndex])
             colCtt.append(cciCtt[targetIndex])
             colCtp.append(cciCtp[targetIndex])
+            colCtpUnc.append(cciCtpUnc[targetIndex])
             colCph.append(cciCph[targetIndex])
             colCty.append(cciCty[targetIndex])
             colNise.append(cciNise[targetIndex])
@@ -857,6 +872,8 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     """output variables should be numpy arrays and not dictionaries"""
     colCot = np.array(colCot)
     colCot = np.ma.masked_greater(colCot, 1000.)
+    colCotUnc = np.array(colCotUnc)
+    colCotUnc = np.ma.masked_greater(colCotUnc, 1000.)
     colCodCalipso = np.array(colCodCalipso)
     colCtt = np.array(colCtt)
     colCtt = np.ma.masked_greater(colCtt, 1000.)
@@ -866,6 +883,8 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     colCTHCalipso = np.array(colCTHCalipso)
     colCtp = np.array(colCtp)
     colCtp = np.ma.masked_greater(colCtp, 10000.)
+    colCtpUnc = np.array(colCtpUnc)
+    colCtpUnc = np.ma.masked_greater(colCtpUnc, 10000.)
     colCTPCalipso0 = np.array(colCTP0Calipso)
     colCTPCalipso1 = np.array(colCTP1Calipso)
     colCTPCalipso2 = np.array(colCTP2Calipso)
@@ -885,7 +904,8 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     colIceCalipso = np.array(colIceCalipso)
     colTopCalipso = np.array(colTopCalipso)
     colTypCalipso = np.array(colTypCalipso)
-    out = {'cciCot': colCot, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCph': colCph, 'cciCty': colCty, 'cciNise': colNise,
+    out = {'cciCot': colCot, 'cciCotUnc': colCotUnc, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCtpUnc': colCtpUnc,
+           'cciCph': colCph, 'cciCty': colCty, 'cciNise': colNise,
            'calipsoCtt0': colCTTCalipso0, 'calipsoCtp0': colCTPCalipso0, 'calipsoCtpBot0': colCTPBotCalipso0,
            'calipsoPhase0': colPhase0Calipso, 'calipsoType0': colType0Calipso,
            'calipsoCtt1': colCTTCalipso1, 'calipsoCtp1': colCTPCalipso1, 'calipsoCtpBot1': colCTPBotCalipso1,
@@ -904,6 +924,61 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     N18 = copy.deepcopy(collocateN18)
     MYD = copy.deepcopy(collocateMYD)
     ENV = copy.deepcopy(collocateENV)
+
+    """calculate CCI COT minus Calipso COD = deltaCOT"""
+    """next step:
+        plot only for those pixels where both say ice"""
+    calipso_variable = 'calipsoCtp0'
+    cc4cl_variable = 'cciCtp'
+    fig = plt.figure(figsize=(20, 10))
+    """loop over both phases"""
+    for i in range(1, 3):
+        for j in range(0, 3):
+            N18_phase = copy.deepcopy(collocateN18)
+            MYD_phase = copy.deepcopy(collocateMYD)
+            ENV_phase = copy.deepcopy(collocateENV)
+            cphCal0 = correct_calipso_phase(N18_phase.get('calipsoPhase' + str(j)))
+            cphN18 = np.round(correct_cci_phase(N18_phase.get('cciCph')))
+            cphMYD = np.round(correct_cci_phase(MYD_phase.get('cciCph')))
+            cphENV = np.round(correct_cci_phase(ENV_phase.get('cciCph')))
+            """phase to be matched"""
+            phase_to_match = i
+            """is used to remove non-phase-matching pixels"""
+            is_no_phase_match_N18 = np.logical_or(cphCal0 != phase_to_match, cphN18 != phase_to_match)
+            is_no_phase_match_MYD = np.logical_or(cphCal0 != phase_to_match, cphMYD != phase_to_match)
+            is_no_phase_match_ENV = np.logical_or(cphCal0 != phase_to_match, cphENV != phase_to_match)
+            """then, calculate difference between CCI and calipso"""
+            deltaCtpN18 = N18_phase.get(cc4cl_variable) - N18_phase.get(calipso_variable)
+            deltaCtpN18[is_no_phase_match_N18] = np.nan
+            deltaCtpMYD = MYD_phase.get(cc4cl_variable) - MYD_phase.get(calipso_variable)
+            deltaCtpMYD[is_no_phase_match_MYD] = np.nan
+            deltaCtpENV = ENV_phase.get(cc4cl_variable) - ENV_phase.get(calipso_variable)
+            deltaCtpENV[is_no_phase_match_ENV] = np.nan
+            """and get retrieval uncertainties"""
+            cotUncN18 = N18_phase.get(cc4cl_variable + 'Unc')
+            cotUncN18[is_no_phase_match_N18] = np.nan
+            cotUncMYD = MYD_phase.get(cc4cl_variable + 'Unc')
+            cotUncMYD[is_no_phase_match_MYD] = np.nan
+            cotUncENV = ENV_phase.get(cc4cl_variable + 'Unc')
+            cotUncENV[is_no_phase_match_ENV] = np.nan
+            """plot these values"""
+            panel = 3 * i + j - 2
+            ax = fig.add_subplot(2, 3, panel)
+            ax.scatter(cotUncN18, deltaCtpN18, label="AVHRR")
+            ax.scatter(cotUncMYD, deltaCtpMYD, label="MODIS AQUA", c="red")
+            ax.scatter(cotUncENV, deltaCtpENV, label="AATSR", c="green")
+            if phase_to_match == 1:
+                phase = "water"
+            else:
+                phase = "ice"
+            ax.set_xlabel("CC4CL CTP uncertainty (" + phase + ", layer " + str(j) + ")")
+            ax.set_ylabel("CC4CL CTP - Calipso CTP")
+            if panel is 1:
+                leg = ax.legend(loc=2, frameon=True, fancybox=True, fontsize=11)
+                leg.get_frame().set_alpha(0.5)
+    figurePathUnc = os.path.dirname(figurePath) + "/" + "_".join(figurePath[figurePath.find("calipsoVsCci"):-1].split("_")[0:2]) + "_uncertainty.png"
+    plt.savefig(figurePathUnc, bbox_inches='tight')
+
 
     """The xaxis reference is Calipso's latitude"""
     plotLat0 = N18.get('calipsoLat0')

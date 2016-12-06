@@ -24,7 +24,7 @@ else:
     delLat = 0.5
     delLon = 0.5
     primary = True
-    sceneTime = '07270810'
+    sceneTime = '07222058'
 
 month = sceneTime[0:2]
 day = sceneTime[2:4]
@@ -59,7 +59,7 @@ elif sceneTime == '07230021':
     boundingBox = [140., -160., 45., 90.]
 elif sceneTime == '07222058':
     centrePoint = [74., -143.]
-    boundingBox = [-180., -100., 45., 90.]
+    boundingBox = [-180., -100., 38., 90.]
 
 # targetGrid:
 minLat = boundingBox[2]
@@ -84,12 +84,10 @@ pathL2PriMYD = data_folder + l2_primary_prefix + "myd_" + sceneTime + ".nc"
 pathL2SecMYD = pathL2PriMYD.replace("primary", "secondary")
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
-# pathL2PriMYD2 = mainL2 + "MYD20080722_1920.nc"
-# pathL2SecMYD2 = mainL2 + "MYD021KM.A2008204.1920.006.2012069113627.bspscs_000500694537.secondary.nc"
-# mergeGranules(pathL2PriMYD, pathL2PriMYD2, mainL2 + "MYD_merged_20080722_19151920_primary.nc")
-# mergeGranules(pathL2SecMYD, pathL2SecMYD2, mainL2 + "MYD_merged_20080722_19151920_secondary.nc")
-# priMYD2 = CCI(pathL2PriMYD2)
-# secMYD2 = CCI(pathL2SecMYD2)
+
+# merge MODIS granules
+#mergeGranules(pathL2PriMYD, pathL2PriMYD2, "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD_merged_20080722_20552100_primary.nc")
+#mergeGranules(pathL2SecMYD, pathL2SecMYD2, "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD_merged_20080722_20552100_secondary.nc")
 
 # Envisat AATSR paths and data
 print "Reading ENVISAT AATSR data"
