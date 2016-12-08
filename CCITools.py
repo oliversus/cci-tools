@@ -16,6 +16,7 @@ import copy
 import os
 from operator import itemgetter
 import globals
+import glob, re
 
 def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         
@@ -932,6 +933,8 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     cc4cl_variable = 'cciCtp'
     fig = plt.figure(figsize=(20, 10))
     """loop over both phases"""
+    # write_NA1 = True
+    # write_SIB = True
     for i in range(1, 3):
         for j in range(0, 3):
             N18_phase = copy.deepcopy(collocateN18)
@@ -949,11 +952,31 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
             is_no_phase_match_ENV = np.logical_or(cphCal0 != phase_to_match, cphENV != phase_to_match)
             """then, calculate difference between CCI and calipso"""
             deltaCtpN18 = N18_phase.get(cc4cl_variable) - N18_phase.get(calipso_variable)
-            deltaCtpN18[is_no_phase_match_N18] = np.nan
             deltaCtpMYD = MYD_phase.get(cc4cl_variable) - MYD_phase.get(calipso_variable)
-            deltaCtpMYD[is_no_phase_match_MYD] = np.nan
             deltaCtpENV = ENV_phase.get(cc4cl_variable) - ENV_phase.get(calipso_variable)
+            """before accounting for phase matches, calculate biases for paper statistics"""
+            # if sceneTime is globals.NA1 and write_NA1:
+            if sceneTime is globals.NA1:
+                NA1_ctp_bias_part = round(np.nanmean(deltaCtpN18[N18_phase.get('calipsoLat0') > 73.7]), 2)
+                globals.latex_variables['NA1_ctp_bias_part'] = NA1_ctp_bias_part
+                #write = "NA1_ctp_bias_part=" + str(NA1_ctp_bias_part) + "\n"
+                #latex_file.write(write)
+                # write_NA1 = False
+            if sceneTime is globals.SIB:
+                N18_bias = np.nanmean(deltaCtpN18[N18_phase.get('calipsoLat0') > 74.])
+                MYD_bias = np.nanmean(deltaCtpMYD[MYD_phase.get('calipsoLat0') > 74.])
+                ENV_bias = np.nanmean(deltaCtpENV[ENV_phase.get('calipsoLat0') > 74.])
+                SIB_ctp_bias_part = round(N18_bias, MYD_bias, ENV_bias, 2)
+                globals.latex_variables['SIB_ctp_bias_part'] = SIB_ctp_bias_part
+                # write = "SIB_ctp_bias_part=" + str(SIB_ctp_bias_part) + "\n"
+                # latex_file.write(write)
+                # write_SIB = False
+
+            """now, account for phase matching"""
+            deltaCtpN18[is_no_phase_match_N18] = np.nan
+            deltaCtpMYD[is_no_phase_match_MYD] = np.nan
             deltaCtpENV[is_no_phase_match_ENV] = np.nan
+
             """and get retrieval uncertainties"""
             cotUncN18 = N18_phase.get(cc4cl_variable + 'Unc')
             cotUncN18[is_no_phase_match_N18] = np.nan
@@ -1184,3 +1207,38 @@ def plot_topography(data, lat, ax):
             y = topography[start:start+length]-10
             ax2.plot(x, y, c="grey", linewidth=3, zorder=1)
     ax2.set_yticks(yticks)
+
+def update_latex_variables(path):
+    """loop over all tex files in main folder"""
+    for tex in glob.glob(path + "*.tex"):
+        """open a test version of each for writing"""
+        with open(os.path.splitext(tex)[0] + "_test.tex", 'w') as new_f:
+            """open tex file for reading"""
+            with open(tex, 'r') as f:
+                """loop over all lines of each file"""
+                for line in f:
+                    """and check whether that line matches the search pattern"""
+                    if re.search('insertVariable{.*}[0-9]*\.{1}[0-9]*', line):
+                        """if so, loop over all words in line"""
+                        for word in line.split():
+                            """and check whether that word matches the search pattern"""
+                            m = re.search('insertVariable{.*}[0-9]*\.{1}[0-9]*', word)
+                            if m:
+                                """if so, get the matching word"""
+                                found = m.group()
+                                """now loop over all latex variables in dictionary"""
+                                for variable, value in globals.latex_variables.iteritems():
+                                    """and if a key matches the word"""
+                                    if variable in found:
+                                        value_new = str(value)
+                                        """get the old value of the latex variable from the tex file"""
+                                        value_old = re.search('[0-9]*\.[0-9]*', found).group()
+                                        """replace it with the new value"""
+                                        replace = found.replace(value_old, value_new)
+                                        """and replace the old word with that new word within the entire line"""
+                                        line = line.replace(found, replace)
+                    """write each line to the test output file, regardless of whether a match has been found"""
+                    new_f.write(line)
+        """after having looped over all lines of a file, replace it by its test version"""
+        os.remove(tex)
+        os.rename(os.path.splitext(tex)[0] + "_test.tex", tex)
