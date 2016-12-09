@@ -933,8 +933,6 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     cc4cl_variable = 'cciCtp'
     fig = plt.figure(figsize=(20, 10))
     """loop over both phases"""
-    # write_NA1 = True
-    # write_SIB = True
     for i in range(1, 3):
         for j in range(0, 3):
             N18_phase = copy.deepcopy(collocateN18)
@@ -955,22 +953,30 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
             deltaCtpMYD = MYD_phase.get(cc4cl_variable) - MYD_phase.get(calipso_variable)
             deltaCtpENV = ENV_phase.get(cc4cl_variable) - ENV_phase.get(calipso_variable)
             """before accounting for phase matches, calculate biases for paper statistics"""
-            # if sceneTime is globals.NA1 and write_NA1:
-            if sceneTime is globals.NA1:
-                NA1_ctp_bias_part = round(np.nanmean(deltaCtpN18[N18_phase.get('calipsoLat0') > 73.7]), 2)
-                globals.latex_variables['NA1_ctp_bias_part'] = NA1_ctp_bias_part
-                #write = "NA1_ctp_bias_part=" + str(NA1_ctp_bias_part) + "\n"
-                #latex_file.write(write)
-                # write_NA1 = False
-            if sceneTime is globals.SIB:
-                N18_bias = np.nanmean(deltaCtpN18[N18_phase.get('calipsoLat0') > 74.])
-                MYD_bias = np.nanmean(deltaCtpMYD[MYD_phase.get('calipsoLat0') > 74.])
-                ENV_bias = np.nanmean(deltaCtpENV[ENV_phase.get('calipsoLat0') > 74.])
-                SIB_ctp_bias_part = round(N18_bias, MYD_bias, ENV_bias, 2)
-                globals.latex_variables['SIB_ctp_bias_part'] = SIB_ctp_bias_part
-                # write = "SIB_ctp_bias_part=" + str(SIB_ctp_bias_part) + "\n"
-                # latex_file.write(write)
-                # write_SIB = False
+            N18_lt_0 = 100. * np.sum(deltaCtpN18 < 0) / len(deltaCtpN18)
+            MYD_lt_0 = 100. * np.sum(deltaCtpMYD < 0) / len(deltaCtpMYD)
+            ENV_lt_0 = 100. * np.sum(deltaCtpENV < 0) / len(deltaCtpENV)
+            total_lt_0 = np.round(np.nanmean([N18_lt_0, MYD_lt_0, ENV_lt_0]), 1)
+            if sceneTime == globals.NA1:
+                globals.latex_variables['NA1_ctp_bias'] = total_lt_0
+            elif sceneTime == globals.NA2:
+                globals.latex_variables['NA2_ctp_bias'] = total_lt_0
+            elif sceneTime == globals.SIB:
+                globals.latex_variables['SIB_ctp_bias'] = total_lt_0
+
+            if sceneTime != globals.NA2:
+                if sceneTime == globals.NA1:
+                    lat_min = 73.7
+                elif sceneTime == globals.SIB:
+                    lat_min = 74.
+                N18_bias = np.nanmean(deltaCtpN18[N18_phase.get('calipsoLat0') > lat_min])
+                MYD_bias = np.nanmean(deltaCtpMYD[MYD_phase.get('calipsoLat0') > lat_min])
+                ENV_bias = np.nanmean(deltaCtpENV[ENV_phase.get('calipsoLat0') > lat_min])
+                total_bias = np.round(np.nanmean([N18_bias, MYD_bias, ENV_bias]), 1)
+                if sceneTime == globals.NA1:
+                    globals.latex_variables['NA1_ctp_bias_part'] = total_bias
+                elif sceneTime == globals.SIB:
+                    globals.latex_variables['SIB_ctp_bias_part'] = total_bias
 
             """now, account for phase matching"""
             deltaCtpN18[is_no_phase_match_N18] = np.nan
@@ -1070,12 +1076,81 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     cphN18 = correct_cci_phase(N18.get('cciCph'))
     ctyN18 = np.round(N18.get('cciCty'), 0)
     ctyN18[ctyN18 == 0.] = np.nan
+    ctyN18[ctyN18 > 10.] = np.nan
     cphMYD = correct_cci_phase(MYD.get('cciCph'))
     ctyMYD = np.round(MYD.get('cciCty'), 0)
     ctyMYD[ctyMYD == 0.] = np.nan
+    ctyMYD[ctyMYD > 10.] = np.nan
     cphENV = correct_cci_phase(ENV.get('cciCph'))
     ctyENV = np.round(ENV.get('cciCty'), 0)
     ctyENV[ctyENV == 0.] = np.nan
+    ctyENV[ctyENV > 10.] = np.nan
+
+    """fraction of pixels for which CC4CL phase equals Calipso"""
+    for i in range(3):
+        if i == 0:
+            cal = cphCal0
+        elif i == 1:
+            cal = cphCal1
+        elif i == 2:
+            cal = cphCal2
+        phase_match_N18 = 100. * np.sum(cal == np.round(cphN18, 0)) / np.sum(~np.isnan(cal))
+        phase_match_MYD = 100. * np.sum(cal == np.round(cphMYD, 0)) / np.sum(~np.isnan(cal))
+        phase_match_ENV = 100. * np.sum(cal == np.round(cphENV, 0)) / np.sum(~np.isnan(cal))
+        if i == 0:
+            phase_match_calipso_CC4CL_layer0 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),
+                                                        1)
+        elif i == 1:
+            phase_match_calipso_CC4CL_layer1 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),
+                                                        1)
+        elif i == 2:
+            phase_match_calipso_CC4CL_layer2 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),
+                                                        1)
+    if sceneTime == globals.NA1:
+        globals.latex_variables['phase_match_calipso_CC4CL_NA1_layer0'] = phase_match_calipso_CC4CL_layer0
+        globals.latex_variables['phase_match_calipso_CC4CL_NA1_layer1'] = phase_match_calipso_CC4CL_layer1
+        globals.latex_variables['phase_match_calipso_CC4CL_NA1_layer2'] = phase_match_calipso_CC4CL_layer2
+        globals.latex_variables['phase_match_calipso_CC4CL_NA1_layermean'] = np.round(np.mean(
+            [phase_match_calipso_CC4CL_layer0, phase_match_calipso_CC4CL_layer1, phase_match_calipso_CC4CL_layer2]), 1)
+    elif sceneTime == globals.NA2:
+        globals.latex_variables['phase_match_calipso_CC4CL_NA2_layer0'] = phase_match_calipso_CC4CL_layer0
+        globals.latex_variables['phase_match_calipso_CC4CL_NA2_layer1'] = phase_match_calipso_CC4CL_layer1
+        globals.latex_variables['phase_match_calipso_CC4CL_NA2_layer2'] = phase_match_calipso_CC4CL_layer2
+        globals.latex_variables['phase_match_calipso_CC4CL_NA2_layermean'] = np.round(np.mean(
+            [phase_match_calipso_CC4CL_layer0, phase_match_calipso_CC4CL_layer1, phase_match_calipso_CC4CL_layer2]), 1)
+    elif sceneTime == globals.SIB:
+        globals.latex_variables['phase_match_calipso_CC4CL_SIB_layer0'] = phase_match_calipso_CC4CL_layer0
+        globals.latex_variables['phase_match_calipso_CC4CL_SIB_layer1'] = phase_match_calipso_CC4CL_layer1
+        globals.latex_variables['phase_match_calipso_CC4CL_SIB_layer2'] = phase_match_calipso_CC4CL_layer2
+        globals.latex_variables['phase_match_calipso_CC4CL_SIB_layermean'] = np.round(np.mean(
+            [phase_match_calipso_CC4CL_layer0, phase_match_calipso_CC4CL_layer1, phase_match_calipso_CC4CL_layer2]), 1)
+
+    # phase_match_calipso_CC4CL = np.round(np.mean([phase_match_N18, phase_match_MYD, phase_match_ENV]), 1)
+    # if sceneTime == globals.NA1:
+    #     globals.latex_variables['cfree_calipso_cloudy_CC4CL_NA1'] = cfree_calipso_cloudy_CC4CL
+    # if sceneTime == globals.NA2:
+    #     globals.latex_variables['cfree_calipso_cloudy_CC4CL_NA2'] = cfree_calipso_cloudy_CC4CL
+    # if sceneTime == globals.SIB:
+    #     globals.latex_variables['cfree_calipso_cloudy_CC4CL_SIB'] = cfree_calipso_cloudy_CC4CL
+
+
+    """fraction of cloud-free Calipso pixels that are also cloud-free in CC4CL"""
+    if sceneTime == globals.NA2:
+        cfree_cc4cl_and_calipso_NA2 = np.round(100. * np.sum(np.isnan(cphN18) & np.isnan(cphCal0)) / np.sum(np.isnan(cty0)), 1)
+        globals.latex_variables['cfree_cc4cl_and_calipso_NA2'] = cfree_cc4cl_and_calipso_NA2
+
+    """fraction of cloudy Calipso pixels that are cloud-free in CC4CL"""
+    cfree_N18 = 100. * np.sum(np.isnan(cphN18) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
+    cfree_MYD = 100. * np.sum(np.isnan(cphMYD) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
+    cfree_ENV = 100. * np.sum(np.isnan(cphENV) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
+    cfree_calipso_cloudy_CC4CL = np.round(np.mean([cfree_N18, cfree_MYD, cfree_ENV]), 1)
+    if sceneTime == globals.NA1:
+        globals.latex_variables['cfree_calipso_cloudy_CC4CL_NA1'] = cfree_calipso_cloudy_CC4CL
+    if sceneTime == globals.NA2:
+        globals.latex_variables['cfree_calipso_cloudy_CC4CL_NA2'] = cfree_calipso_cloudy_CC4CL
+    if sceneTime == globals.SIB:
+        globals.latex_variables['cfree_calipso_cloudy_CC4CL_SIB'] = cfree_calipso_cloudy_CC4CL
+
     df = DataFrame([cphCal0, cphCal1, cphCal2, cphN18, cphMYD, cphENV])
     vals = np.around(df.values, 2)
     normal = plt.Normalize(np.nanmin(vals) - 1, np.nanmax(vals) + 1)

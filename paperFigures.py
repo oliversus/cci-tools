@@ -51,11 +51,11 @@ if len(argv) > 1:
         print "ERROR: 7th argument plotCot should be [True/False]."
         sys.exit()
 else:
-    delLat = "0.5"
-    delLon = "0.5"
+    delLat = "0.1"
+    delLon = "0.1"
     doRGB = False
-    sceneTime = '07221915'
-    corrected = True
+    sceneTime = '07270810'
+    corrected = False
     plotCot = False
     plotCalipso = True
 
@@ -376,42 +376,7 @@ print "N18 " + variable + " stdev = " + str(round(getattr(N18PrimaryResampled, v
 #stats.ttest_ind(getattr(N18PrimaryResampled, variable).ravel(), getattr(MYDPrimaryResampled, variable).ravel())
 
 print "updating latex variables"
+print globals.latex_variables
 path = globals.main_folder
 update_latex_variables(path)
 print "...done"
-
-# """loop over all tex files in main folder"""
-# for tex in glob.glob(path + "*.tex"):
-#     """open a test version of each for writing"""
-#     with open(os.path.splitext(tex)[0] + "_test.tex", 'w') as new_f:
-#         """open tex file for reading"""
-#         with open(tex, 'r') as f:
-#             """loop over all lines of each file"""
-#             for line in f:
-#                 """and check whether that line matches the search pattern"""
-#                 if re.search('insertVariable{.*}[0-9]*\.{1}[0-9]*', line):
-#                     """if so, loop over all words in line"""
-#                     for word in line.split():
-#                         """and check whether that word matches the search pattern"""
-#                         m = re.search('insertVariable{.*}[0-9]*\.{1}[0-9]*', word)
-#                         if m:
-#                             """if so, get the matching word"""
-#                             found = m.group()
-#                             """now loop over all latex variables in dictionary"""
-#                             for variable, value in globals.latex_variables.iteritems():
-#                                 print variable, value
-#                                 print variable in found
-#                                 """and if a key matches the word"""
-#                                 if variable in found:
-#                                     value_new = str(value)
-#                                     """get the old value of the latex variable from the tex file"""
-#                                     value_old = re.search('[0-9]*\.[0-9]*', found).group()
-#                                     """replace it with the new value"""
-#                                     replace = found.replace(value_old, value_new)
-#                                     """and replace the old word with that new word within the entire line"""
-#                                     line = line.replace(found, replace)
-#                 """write each line to the test output file, regardless of whether a match has been found"""
-#                 new_f.write(line)
-#     """after having looped over all lines of a file, replace it by its test version"""
-#     os.remove(tex)
-#     os.rename(os.path.splitext(tex)[0] + "_test.tex", tex)
