@@ -311,7 +311,9 @@ ax = fig1.add_subplot(2, 2, 1)
 ax.title.set_text('CTP')
 input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
 if sceneTime == globals.NA2:
-    globals.latex_variables["NA2_ctp_unc_lt10"] = np.round(np.sum(input < 10.) / ma.count(input), 1)
+    globals.latex_variables["NA2_ctp_unc_lt10"] = 100. * np.round(np.sum(input < 10.) / ma.count(input), 1)
+    foo = input[~input.mask]
+    globals.latex_variables["NA2_ctp_unc_median"] = np.round(np.nanmedian(foo), 1)
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
         'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
 variable = 'cot'
@@ -319,6 +321,9 @@ variable_unc = variable + '_uncertainty'
 ax = fig1.add_subplot(2, 2, 2)
 ax.title.set_text('COT')
 input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+if sceneTime == globals.NA2:
+    foo = input[~input.mask]
+    globals.latex_variables["NA2_cot_unc_median"] = np.round(np.nanmean(foo), 1)
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
         'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
 variable = 'cer'
@@ -326,11 +331,18 @@ variable_unc = variable + '_uncertainty'
 ax = fig1.add_subplot(2, 2, 3)
 ax.title.set_text('CER')
 input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+if sceneTime == globals.NA2:
+    foo = input[~input.mask]
+    globals.latex_variables["NA2_cer_unc_median"] = np.round(np.nanmedian(foo), 1)
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
         'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
 variable = 'cc_total_unc'
 ax = fig1.add_subplot(2, 2, 4)
 ax.title.set_text('Cloud mask')
+input = getattr(MYDPrimaryResampled, variable)
+if sceneTime == globals.NA2:
+    foo = input[~input.mask]
+    globals.latex_variables["NA2_cmask_unc_median"] = np.round(np.nanmedian(foo), 1)
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
         'MYD', colourMin=0, colourMax=50, create_figure=False)
 plt.savefig(figure_name, bbox_inches='tight')
