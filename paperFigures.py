@@ -1,16 +1,20 @@
 #!/data/osus/Enthought/User/bin/python2.7
+from __future__ import division
 
 from analyseCCI import CCI
 import numpy as np
 from CCITools import buildRGB, plotRGB,\
     plotRGBMulti, greatCircle, collocateCciAndCalipso, \
-    plotCciCalipsoCollocation, plotCCI, update_latex_variables
+    plotCciCalipsoCollocation, plotCCI, plotCCIMulti, \
+    update_latex_variables, calculate_statistics
 import sys
 import numpy.ma as ma
 from pyhdf.SD import SD, SDC
 from sys import argv
 import math
 import globals
+import scipy.stats as stats
+import matplotlib.pyplot as plt
 
 """initialise global variables"""
 globals.init()
@@ -54,11 +58,12 @@ else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
-    sceneTime = '07270810'
+    sceneTime = '07222058'
     corrected = False
     plotCot = False
     plotCalipso = True
 
+globals.sceneTime = sceneTime
 delLat_delLon = delLat + "_" + delLon
 month = sceneTime[0:2]
 day = sceneTime[2:4]
@@ -198,13 +203,16 @@ ENVSecondaryResampled.getAllVariables()
 N18ResampledCloudMask = ma.masked_less(N18PrimaryResampled.cc_total, 1.).mask
 MYDResampledCloudMask = ma.masked_less(MYDPrimaryResampled.cc_total, 1.).mask
 ENVResampledCloudMask = ma.masked_less(ENVPrimaryResampled.cc_total, 1.).mask
-AllSensorsMaskCombined = N18ResampledCloudMask + MYDResampledCloudMask
+CloudMask = N18ResampledCloudMask + MYDResampledCloudMask + ENVResampledCloudMask
 
 # build mask of all pixels out of study area, i.e. where any sensor has no reflectance data
 N18ReflMask = N18SecondaryResampled.reflectance_in_channel_no_1.mask
 MYDReflMask = MYDSecondaryResampled.reflectance_in_channel_no_1.mask
 ENVReflMask = ENVSecondaryResampled.reflectance_in_channel_no_1.mask
 ReflMask = N18ReflMask + MYDReflMask + ENVReflMask
+
+SuperMask = CloudMask + ReflMask
+#ReflMask = SuperMask
 
 N18Masked.maskAllVariables(ReflMask)
 poly_lats = [62.5, 78., 83.5, 63.5]
@@ -259,6 +267,74 @@ if doRGB:
                 centrePoint[0], centrePoint[1])    
     print "RGB: done."    
 
+print "Plotting data."
+
+# 1a) RGB, ideally highly resolved MODIS with 0.6, 0.8, and 1.6 (1.6 has missing scan lines though)
+
+# 1b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
+variable = "ctp"
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'N18', colourMin=0, colourMax=1000)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'MYD', colourMin=0, colourMax=1000)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'ENV', colourMin=0, colourMax=1000)
+plotCCIMulti(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        colourMin=0, colourMax=1000)
+
+variable = "cot"
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'N18', colourMin=0, colourMax=50)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'MYD', colourMin=0, colourMax=50)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'ENV', colourMin=0, colourMax=50)
+plotCCIMulti(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        colourMin=0, colourMax=50)
+
+variable = "cer"
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'N18', colourMin=0, colourMax=50)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'MYD', colourMin=0, colourMax=50)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'ENV', colourMin=0, colourMax=50)
+plotCCIMulti(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        colourMin=0, colourMax=50)
+
+# plot uncertainties
+figure_name = globals.figuresDir + sceneTime + "_uncertainties_percent.png"
+fig1 = plt.figure(figsize=(15, 15))
+variable = 'ctp'
+variable_unc = variable + '_uncertainty'
+ax = fig1.add_subplot(2, 2, 1)
+ax.title.set_text('CTP')
+input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+if sceneTime == globals.NA2:
+    globals.latex_variables["NA2_ctp_unc_lt10"] = np.round(np.sum(input < 10.) / ma.count(input), 1)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
+variable = 'cot'
+variable_unc = variable + '_uncertainty'
+ax = fig1.add_subplot(2, 2, 2)
+ax.title.set_text('COT')
+input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
+variable = 'cer'
+variable_unc = variable + '_uncertainty'
+ax = fig1.add_subplot(2, 2, 3)
+ax.title.set_text('CER')
+input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
+variable = 'cc_total_unc'
+ax = fig1.add_subplot(2, 2, 4)
+ax.title.set_text('Cloud mask')
+plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
+        'MYD', colourMin=0, colourMax=50, create_figure=False)
+plt.savefig(figure_name, bbox_inches='tight')
+
 ########################################
 """ Calipso collocation with CCI grid"""
 
@@ -299,15 +375,6 @@ figurePath += ".png"
 if plotCalipso:
     plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime, plotCot)
 
-N18PrimaryResampled.maskAllVariables(ReflMask)
-N18SecondaryResampled.maskAllVariables(ReflMask)
-MYDPrimaryResampled.maskAllVariables(ReflMask)
-MYDSecondaryResampled.maskAllVariables(ReflMask)
-ENVPrimaryResampled.maskAllVariables(ReflMask)
-ENVSecondaryResampled.maskAllVariables(ReflMask)
-
-#sys.exit()
-    
     # b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
 timeDiff = ((MYDPrimaryResampled.time - math.floor(MYDPrimaryResampled.time.min())) \
             - (N18PrimaryResampled.time - math.floor(N18PrimaryResampled.time.min()))) * 24 * 60
@@ -322,7 +389,7 @@ if True:
     print "Max solzen MYD  = ", round(MYDPrimaryResampled.solar_zenith_view_no1.max(), 2)
         # check that all sensors have same amount of data, otherwise create mask --> print n values
 
-    # d) plot ctp for N18, MYD, AATSR
+    # d) plot ctp and cot for N18, MYD, AATSR
 
     # e) plot histogram with normal (?) distribution fit
 
@@ -338,22 +405,143 @@ if True:
 
 #sys.exit()
 
-print "Plotting data."
 
-# 1a) RGB, ideally highly resolved MODIS with 0.6, 0.8, and 1.6 (1.6 has missing scan lines though) 
+# calculate statistics for study area polygon only
 
-# 1b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
-variable = "lat"
-plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
-        'NOAA18', mask = ReflMask)
-print "N18 " + variable + " mean = " + str(round(getattr(N18PrimaryResampled, variable).mean(), 2))
-print "N18 " + variable + " stdev = " + str(round(getattr(N18PrimaryResampled, variable).std(), 2))
+ReflMask = SuperMask
+N18PrimaryResampled.maskAllVariables(ReflMask)
+N18SecondaryResampled.maskAllVariables(ReflMask)
+MYDPrimaryResampled.maskAllVariables(ReflMask)
+MYDSecondaryResampled.maskAllVariables(ReflMask)
+ENVPrimaryResampled.maskAllVariables(ReflMask)
+ENVSecondaryResampled.maskAllVariables(ReflMask)
 
-variable = "lon"
-plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
-        'NOAA18', mask = ReflMask)
-print "N18 " + variable + " mean = " + str(round(getattr(N18PrimaryResampled, variable).mean(), 2))
-print "N18 " + variable + " stdev = " + str(round(getattr(N18PrimaryResampled, variable).std(), 2))
+nbins = 30
+ttest_threshold = 0.01
+variable = 'ctp'
+x = getattr(N18PrimaryResampled, variable).ravel().compressed()
+y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
+z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
+if stats.ttest_ind(x, y).pvalue > ttest_threshold:
+    print variable + " ttest for N18 + MYD is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, y).pvalue)
+if stats.ttest_ind(x, z).pvalue > ttest_threshold:
+    print variable + " ttest for N18 + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, z).pvalue)
+if stats.ttest_ind(y, z).pvalue > ttest_threshold:
+    print variable + " ttest for MYD + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(y, z).pvalue)
+if sceneTime == globals.NA2:
+    calculate_statistics(x, variable, 'N18')
+    calculate_statistics(y, variable, 'MYD')
+    calculate_statistics(z, variable, 'ENV')
+data = np.vstack([x,y,z]).T
+bins = np.linspace(200, 1100, nbins)
+fig1 = plt.figure(figsize = (20, 10))
+ax=fig1.add_subplot(2,3,1)
+plt.hist(data, range=(0, 1100), normed=True, label=['N18','MYD','ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+plt.legend(loc=2, title="(a)")
+ax.set_xlabel(variable.upper())
+variable = 'cot'
+x = getattr(N18PrimaryResampled, variable).ravel().compressed()
+y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
+z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
+if stats.ttest_ind(x, y).pvalue > ttest_threshold:
+    print variable + " ttest for N18 + MYD is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, y).pvalue)
+if stats.ttest_ind(x, z).pvalue > ttest_threshold:
+    print variable + " ttest for N18 + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, z).pvalue)
+if stats.ttest_ind(y, z).pvalue > ttest_threshold:
+    print variable + " ttest for MYD + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(y, z).pvalue)
+if sceneTime == globals.NA2:
+    calculate_statistics(x, variable, 'N18')
+    calculate_statistics(y, variable, 'MYD')
+    calculate_statistics(z, variable, 'ENV')
+data = np.vstack([x,y,z]).T
+bins = np.linspace(0, 50, nbins)
+ax=fig1.add_subplot(2,3,2)
+plt.hist(data, range=(0, 50), normed=True, label=['N18','MYD','ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+plt.legend(loc=1, title="(c)")
+ax.set_xlabel(variable.upper())
+variable = 'cer'
+x = getattr(N18PrimaryResampled, variable).ravel().compressed()
+y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
+z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
+if stats.ttest_ind(x, y).pvalue > ttest_threshold:
+    print variable + " ttest for N18 + MYD is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, y).pvalue)
+if stats.ttest_ind(x, z).pvalue > ttest_threshold:
+    print variable + " ttest for N18 + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, z).pvalue)
+if stats.ttest_ind(y, z).pvalue > ttest_threshold:
+    print variable + " ttest for MYD + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(y, z).pvalue)
+if sceneTime == globals.NA2:
+    calculate_statistics(x, variable, 'N18')
+    calculate_statistics(y, variable, 'MYD')
+    calculate_statistics(z, variable, 'ENV')
+data = np.vstack([x,y,z]).T
+bins = np.linspace(0, 50, nbins)
+ax=fig1.add_subplot(2,3,3)
+plt.hist(data, range=(0, 50), normed=True, label=['N18','MYD','ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+plt.legend(loc=1, title="(e)")
+ax.set_xlabel(variable.upper())
+
+# differences between retrievals: N18 - MYD, N18 - ENV, MYD - ENV
+variable = 'ctp'
+x = getattr(N18PrimaryResampled, variable).ravel().compressed()
+y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
+z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
+a = x - y
+b = x - z
+c = y - z
+if sceneTime == globals.NA2:
+    calculate_statistics(a, variable + 'd', 'N18')
+    calculate_statistics(b, variable + 'd', 'MYD')
+    calculate_statistics(c, variable + 'd', 'ENV')
+data = np.vstack([a, b, c]).T
+bins = np.linspace(-100, 100, nbins)
+#fig1 = plt.figure(figsize = (10, 10))
+ax=fig1.add_subplot(2,3,4)
+plt.hist(data, range=(0, 1100), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+plt.legend(loc=2, title="(b)")
+ax.set_xlabel("$\Delta$ " + variable.upper())
+variable = 'cot'
+x = getattr(N18PrimaryResampled, variable).ravel().compressed()
+y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
+z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
+a = x - y
+b = x - z
+c = y - z
+if sceneTime == globals.NA2:
+    calculate_statistics(a, variable + 'd', 'N18')
+    calculate_statistics(b, variable + 'd', 'MYD')
+    calculate_statistics(c, variable + 'd', 'ENV')
+data = np.vstack([a, b, c]).T
+bins = np.linspace(-10, 10, nbins)
+ax=fig1.add_subplot(2,3,5)
+plt.hist(data, range=(0, 50), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+ax.set_xlabel("$\Delta$ " + variable.upper())
+plt.legend(loc=1, title="(d)")
+variable = 'cer'
+x = getattr(N18PrimaryResampled, variable).ravel().compressed()
+y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
+z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
+a = x - y
+b = x - z
+c = y - z
+if sceneTime == globals.NA2:
+    calculate_statistics(a, variable + 'd', 'N18')
+    calculate_statistics(b, variable + 'd', 'MYD')
+    calculate_statistics(c, variable + 'd', 'ENV')
+data = np.vstack([a, b, c]).T
+bins = np.linspace(-10, 10, nbins)
+ax=fig1.add_subplot(2,3,6)
+plt.hist(data, range=(0, 50), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+ax.set_xlabel("$\Delta$ " + variable.upper())
+plt.legend(loc=1, title="(f)")
+plt.savefig(globals.figuresDir + sceneTime + '_histograms.png', bbox_inches='tight')
+
+
+# ax=fig1.add_subplot(2,1,2)
+# #plt.hist(data[:,0], range=(0, 1100), normed=True, bins=bins)
+# plt.hist(x, range=(0, 1100), normed=True, bins=bins)
+
+input = abs(getattr(MYDPrimaryResampled, variable) - getattr(N18PrimaryResampled, variable))
+#input.mask = input.mask + ma.masked_greater(input, input.mean() + input.std() * 2).mask
 
 # plotCCI(N18PrimaryResampled, MYDPrimaryResampled, boundingBox, centrePoint, variable,
 #         'MYD', mask = AllSensorsMaskCombined)
@@ -373,7 +561,13 @@ print "N18 " + variable + " stdev = " + str(round(getattr(N18PrimaryResampled, v
 # plt.scatter(timeDiff, input)
 # plt.draw()
 
-#stats.ttest_ind(getattr(N18PrimaryResampled, variable).ravel(), getattr(MYDPrimaryResampled, variable).ravel())
+# ttests
+# N18 and MYD
+print stats.ttest_ind(getattr(N18PrimaryResampled, variable).ravel(), getattr(MYDPrimaryResampled, variable).ravel())
+# N18 and ENV
+print stats.ttest_ind(getattr(N18PrimaryResampled, variable).ravel(), getattr(ENVPrimaryResampled, variable).ravel())
+# MYD and ENV
+print stats.ttest_ind(getattr(MYDPrimaryResampled, variable).ravel(), getattr(ENVPrimaryResampled, variable).ravel())
 
 print "updating latex variables"
 print globals.latex_variables

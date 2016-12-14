@@ -49,48 +49,54 @@ def writeCCI(path, data, targetGrid, primary, platform = "N18"):
 
         cer = ncOut.createVariable("cer","f8",("along_track", "across_track"))
         cer[:,:] = data[:,:,5]
-        
+
+        cer_unc = ncOut.createVariable("cer_uncertainty","f8",("along_track", "across_track"))
+        cer_unc[:,:] = data[:,:,6]
+
         cwp = ncOut.createVariable("cwp","f8",("along_track", "across_track"))
-        cwp[:,:] = data[:,:,6]
+        cwp[:,:] = data[:,:,7]
         
         ctp = ncOut.createVariable("ctp","f8",("along_track", "across_track"))
-        ctp[:,:] = data[:,:,7]
+        ctp[:,:] = data[:,:,8]
 
         ctp_unc = ncOut.createVariable("ctp_uncertainty","f8",("along_track", "across_track"))
-        ctp_unc[:,:] = data[:,:,8]
+        ctp_unc[:,:] = data[:,:,9]
         
         ctp_corrected = ncOut.createVariable("ctp_corrected","f8",("along_track", "across_track"))
-        ctp_corrected[:,:] = data[:,:,9]
+        ctp_corrected[:,:] = data[:,:,10]
         
         cth = ncOut.createVariable("cth","f8",("along_track", "across_track"))
-        cth[:,:] = data[:,:,10]
+        cth[:,:] = data[:,:,11]
 
         cth_unc = ncOut.createVariable("cth_uncertainty","f8",("along_track", "across_track"))
-        cth_unc[:,:] = data[:,:,11]
+        cth_unc[:,:] = data[:,:,12]
 
         cth_corrected = ncOut.createVariable("cth_corrected","f8",("along_track", "across_track"))
-        cth_corrected[:,:] = data[:,:,12]
+        cth_corrected[:,:] = data[:,:,13]
         
         ctt = ncOut.createVariable("ctt","f8",("along_track", "across_track"))
-        ctt[:,:] = data[:,:,13]
+        ctt[:,:] = data[:,:,14]
 
-        ctt_uncertainty = ncOut.createVariable("ctt_uncertainty","f8",("along_track", "across_track"))
-        ctt_uncertainty[:,:] = data[:,:,14]
+        ctt_unc = ncOut.createVariable("ctt_uncertainty","f8",("along_track", "across_track"))
+        ctt_unc[:,:] = data[:,:,15]
 
         ctt_corrected = ncOut.createVariable("ctt_corrected","f8",("along_track", "across_track"))
-        ctt_corrected[:,:] = data[:,:,15]
+        ctt_corrected[:,:] = data[:,:,16]
 
         cc_total = ncOut.createVariable("cc_total","f8",("along_track", "across_track"))
-        cc_total[:,:] = data[:,:,16]
+        cc_total[:,:] = data[:,:,17]
+
+        cc_total_unc = ncOut.createVariable("cc_total_uncertainty","f8",("along_track", "across_track"))
+        cc_total_unc[:,:] = data[:,:,18]
 
         phase = ncOut.createVariable("phase","f8",("along_track", "across_track"))
-        phase[:,:] = data[:,:,17]
+        phase[:,:] = data[:,:,19]
 
         cldtype = ncOut.createVariable("cldtype", "f8", ("along_track", "across_track"))
-        cldtype[:, :] = data[:, :, 18]
+        cldtype[:, :] = data[:, :, 20]
 
         nisemask = ncOut.createVariable("nisemask", "f8", ("along_track", "across_track"))
-        nisemask[:, :] = data[:, :, 19]
+        nisemask[:, :] = data[:, :, 21]
 
     else:
 
@@ -212,9 +218,9 @@ def resampleCCI(sourceCCI, targetGrid, sensor, maxDistance, lat_in = None, lon_i
 
     # variables to be resampled
     if primary:
-        variables = ["time", "solar_zenith_view_no1", "satellite_zenith_view_no1", "cot", "cot_uncertainty", "cer", "cwp",
-                     "ctp", "ctp_uncertainty", "ctp_corrected", "cth", "cth_uncertainty", "cth_corrected", "ctt", "ctt_uncertainty", "ctt_corrected", "cc_total",
-                     "phase", "cldtype", "nisemask"]
+        variables = ["time", "solar_zenith_view_no1", "satellite_zenith_view_no1", "cot", "cot_uncertainty", "cer", "cer_uncertainty", "cwp",
+                     "ctp", "ctp_uncertainty", "ctp_corrected", "cth", "cth_uncertainty", "cth_corrected", "ctt", "ctt_uncertainty", "ctt_corrected",
+                     "cc_total", "cc_total_uncertainty", "phase", "cldtype", "nisemask"]
     else:
         if sensor == "N18":
             variables = ["albedo_in_channel_no_1", "albedo_in_channel_no_2", "albedo_in_channel_no_3",
@@ -315,17 +321,19 @@ def plotVariable(CCIpri, CCIsec,
                  res = 'l',
                  llcrnrlat = 50, urcrnrlat = 80, llcrnrlon = -180, urcrnrlon = -150,
                  cmin = None, cmax = None,
-                 mask = None):    
+                 mask = None, multi = False, create_figure = True):
     
     # define map projection
     map = Basemap(width = width, height = height,
                   resolution='l', projection = 'stere',
                   lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
 
-    # define figure size
-    fig1 = plt.figure(figsize = (10, 10))
-    # define # subplots
-    ax = fig1.add_subplot(111)
+    # define figure size and # of subplots
+    # if multi:
+    #     create_figure = False
+    if not multi and create_figure:
+        fig1 = plt.figure(figsize=(10, 10))
+        ax = fig1.add_subplot(1, 1, 1)
 
     # draw coasts and fill continents
     map.drawcoastlines(linewidth = 0.5)
@@ -343,6 +351,7 @@ def plotVariable(CCIpri, CCIsec,
     if mask is not None:
         print "    masking"
         var.mask = mask 
+    var.mask[var > 9999.] = True
 
     # plot the data, adding a colorbar
     forColorbar = map.pcolormesh(CCIpri.lon, CCIpri.lat, var, latlon = True)
@@ -355,13 +364,14 @@ def plotVariable(CCIpri, CCIsec,
     map.plot(x, y, 'kx', markersize=15)
 
     # draw grid lines
-    gridSpacing = 5.
+    gridSpacingLat = 5.
+    gridSpacingLon = 10.
     map.drawparallels(
-        np.arange(llcrnrlat, urcrnrlat, gridSpacing),
+        np.arange(llcrnrlat, urcrnrlat, gridSpacingLat),
         color = 'black', linewidth = 0.5,
         labels=[True, False, False, False])
     map.drawmeridians(
-        np.arange(-180, urcrnrlon, gridSpacing),
+        np.arange(-180, urcrnrlon, gridSpacingLon),
         color = '0.25', linewidth = 0.5,
         labels=[False, False, False, True])
 
@@ -371,13 +381,13 @@ def plotVariable(CCIpri, CCIsec,
     #               resolution = 'l'
     #               )
 
-def plotCCI(priN18, priMYD, boundingBox, centrePoint, variable, platform,
-            secN18 = None, secMYD = None, input = None, colourMin = None, 
-            colourMax = None, mask = None):
+def plotCCI(priN18, priMYD, priENV, boundingBox, centrePoint, variable, platform,
+            secN18 = None, secMYD = None, secENV = None, input = None, colourMin = None,
+            colourMax = None, mask = None, create_figure = True):
 
     diff = False
     # output figure name:
-    if platform == "NOAA18":
+    if platform == "N18":
         CCI_filename = os.path.basename(priN18.getPath())
     elif platform == "MYD":
         CCI_filename = os.path.basename(priMYD.getPath())
@@ -392,9 +402,6 @@ def plotCCI(priN18, priMYD, boundingBox, centrePoint, variable, platform,
     if diff:
         foo[0] = platform
     figure_name = globals.figuresDir + sep.join(foo) + suffix
-
-    # define figure size
-    #fig1 = plt.figure(figsize=(10, 10))
 
     # projection type: stereographic
     lat_0     = centrePoint[0]
@@ -428,12 +435,15 @@ def plotCCI(priN18, priMYD, boundingBox, centrePoint, variable, platform,
         cmin = None
         cmax = None
         
-    if platform is 'NOAA18':
+    if platform is 'N18':
         primary = priN18
         secondary = secN18
     elif platform is 'MYD':
         primary = priMYD
         secondary = secMYD
+    elif platform is 'ENV':
+        primary = priENV
+        secondary = secENV
     elif platform is 'MYDResampled':
         primary = MYDResampled
         secondary = secMYD # resampled secondary data not yet available
@@ -452,7 +462,79 @@ def plotCCI(priN18, priMYD, boundingBox, centrePoint, variable, platform,
                  res = 'l',
                  llcrnrlat = llcrnrlat, urcrnrlat = urcrnrlat, llcrnrlon = -180, urcrnrlon = urcrnrlon,
                  cmin = cmin, cmax = cmax,
-                 mask = mask)
+                 mask = mask, create_figure = create_figure)
+    if create_figure:
+        plt.savefig(figure_name, bbox_inches='tight')
+
+def plotCCIMulti(priN18, priMYD, priENV, boundingBox, centrePoint, variable,
+            secN18 = None, secMYD = None, secENV = None, input = None, colourMin = None,
+            colourMax = None, mask = None):
+
+    suffix = ".png"
+    figure_name = globals.figuresDir + globals.sceneTime + "_" + variable + "_multi" + suffix
+
+    # define figure size
+    fig1 = plt.figure(figsize=(30, 10))
+
+    # projection type: stereographic
+    lat_0     = centrePoint[0]
+    lon_0     = centrePoint[1]
+    llcrnrlat = boundingBox[2]
+    urcrnrlat = boundingBox[3]
+    llcrnrlon = boundingBox[0]
+    urcrnrlon = boundingBox[1]
+
+    if input is None:
+        plotInput = False
+    else:
+        plotInput = True
+
+    if colourMin is not None and colourMax is not None:
+        cmin = colourMin
+        cmax = colourMax
+    elif colourMin is not None and colourMax is None:
+        cmin = colourMin
+        if plotInput:
+            cmax = input.max()
+        else:
+            cmax = variable.max()
+    elif colourMin is None and colourMax is not None:
+        if plotInput:
+            cmin = input.min()
+        else:
+            cmin = variable.min()
+        cmax = colourMax
+    else:
+        cmin = None
+        cmax = None
+
+    platforms = ['N18', 'MYD', 'ENV']
+    for i, platform in enumerate(platforms):
+
+        if platform is 'N18':
+            primary = priN18
+            secondary = secN18
+            sensor = 'AVHRR'
+        elif platform is 'MYD':
+            primary = priMYD
+            secondary = secMYD
+            sensor = 'MODIS'
+        elif platform is 'ENV':
+            primary = priENV
+            secondary = secENV
+            sensor = 'AATSR'
+        ax=fig1.add_subplot(1,3,i+1)
+        ax.title.set_text(sensor)
+        print("Plotting " + variable + " for " + platform + ".")
+        plotVariable(primary, secondary,
+                     lat_0, lon_0,
+                     variable = variable, input = input, plotInput = plotInput,
+                     width = 3500000, height = 3500000,
+                     res = 'l',
+                     llcrnrlat = llcrnrlat, urcrnrlat = urcrnrlat, llcrnrlon = -180, urcrnrlon = urcrnrlon,
+                     cmin = cmin, cmax = cmax,
+                     mask = mask, multi=True)
+
     plt.savefig(figure_name, bbox_inches='tight')
 
 def buildRGB(primaryData, secondaryData, platform):
@@ -1293,11 +1375,11 @@ def update_latex_variables(path):
                 """loop over all lines of each file"""
                 for line in f:
                     """and check whether that line matches the search pattern"""
-                    if re.search('insertVariable{.*}[0-9]*\.{1}[0-9]*', line):
+                    if re.search('load{.*}[0-9]*\.{1}[0-9]*', line):
                         """if so, loop over all words in line"""
                         for word in line.split():
                             """and check whether that word matches the search pattern"""
-                            m = re.search('insertVariable{.*}[0-9]*\.{1}[0-9]*', word)
+                            m = re.search('load{.*}[0-9]*\.{1}[0-9]*', word)
                             if m:
                                 """if so, get the matching word"""
                                 found = m.group()
@@ -1317,3 +1399,13 @@ def update_latex_variables(path):
         """after having looped over all lines of a file, replace it by its test version"""
         os.remove(tex)
         os.rename(os.path.splitext(tex)[0] + "_test.tex", tex)
+
+def calculate_statistics(data, variable, platform):
+
+    import scipy.stats as stats
+
+    globals.latex_variables[variable + 'Mean' + platform] = np.round(np.nanmean(data), 1)
+    globals.latex_variables[variable + 'Med' + platform] = np.round(np.nanmedian(data), 1)
+    globals.latex_variables[variable + 'Std' + platform] = np.round(np.nanstd(data), 1)
+    globals.latex_variables[variable + 'Skew' + platform] = np.round(stats.skew(data), 1)
+    globals.latex_variables[variable + 'Kurt' + platform] = np.round(stats.kurtosis(data), 1)
