@@ -316,6 +316,7 @@ def intToBin(x):
 
 def plotVariable(CCIpri, CCIsec,
                  lat_0, lon_0,
+                 poly_lats=None, poly_lons=None,
                  variable = "cot", input = None, plotInput = False,
                  width = 5000000, height = 5000000,
                  res = 'l',
@@ -374,6 +375,8 @@ def plotVariable(CCIpri, CCIsec,
         np.arange(-180, urcrnrlon, gridSpacingLon),
         color = '0.25', linewidth = 0.5,
         labels=[False, False, False, True])
+    if poly_lats and poly_lons:
+        draw_screen_poly(poly_lats, poly_lons, map)
 
     # alternative map projection
     # map = Basemap(projection = 'stere', lat_0 = lat_0, lon_0 = lon_0, 
@@ -458,7 +461,7 @@ def plotCCI(priN18, priMYD, priENV, boundingBox, centrePoint, variable, platform
     plotVariable(primary, secondary,
                  lat_0, lon_0,
                  variable = variable, input = input, plotInput = plotInput,
-                 width = 4000000, height = 4000000,
+                 width = 3500000, height = 3500000,
                  res = 'l',
                  llcrnrlat = llcrnrlat, urcrnrlat = urcrnrlat, llcrnrlon = -180, urcrnrlon = urcrnrlon,
                  cmin = cmin, cmax = cmax,
@@ -466,7 +469,7 @@ def plotCCI(priN18, priMYD, priENV, boundingBox, centrePoint, variable, platform
     if create_figure:
         plt.savefig(figure_name, bbox_inches='tight')
 
-def plotCCIMulti(priN18, priMYD, priENV, boundingBox, centrePoint, variable,
+def plotCCIMulti(priN18, priMYD, priENV, boundingBox, centrePoint, variable, poly_lats, poly_lons,
             secN18 = None, secMYD = None, secENV = None, input = None, colourMin = None,
             colourMax = None, mask = None):
 
@@ -527,7 +530,7 @@ def plotCCIMulti(priN18, priMYD, priENV, boundingBox, centrePoint, variable,
         ax.title.set_text(sensor)
         print("Plotting " + variable + " for " + platform + ".")
         plotVariable(primary, secondary,
-                     lat_0, lon_0,
+                     lat_0, lon_0, poly_lats=poly_lats, poly_lons=poly_lons,
                      variable = variable, input = input, plotInput = plotInput,
                      width = 3500000, height = 3500000,
                      res = 'l',

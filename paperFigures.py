@@ -1,4 +1,6 @@
-#!/data/osus/Enthought/User/bin/python2.7
+#!/usr/bin/python
+#/data/osus/Enthought/User/bin/python2.7
+
 from __future__ import division
 
 from analyseCCI import CCI
@@ -15,6 +17,7 @@ import math
 import globals
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 """initialise global variables"""
 globals.init()
@@ -70,11 +73,8 @@ day = sceneTime[2:4]
 hour = sceneTime[4:6]
 minute = sceneTime[6:8]
 
-data_folder = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/data/"
-figuresDir = "/cmsaf/esa_doku/ESA_Cloud_cci/publications/CC4CL_paper/figures/"
-
-calipsoPath1km = data_folder + "calipso_1km_" + sceneTime + ".hdf"
-calipsoPath5km = data_folder + "calipso_5km_" + sceneTime + ".hdf"
+calipsoPath1km = globals.data_folder + "calipso_1km_" + sceneTime + ".hdf"
+calipsoPath5km = globals.data_folder + "calipso_5km_" + sceneTime + ".hdf"
 
 hdf = SD(calipsoPath5km, SDC.READ)
 # Read geolocation
@@ -122,45 +122,45 @@ ENVSecondaryResampledName = ENVPrimaryResampledName.replace("primary", "secondar
 
 # NOAA18 paths and data
 print "Reading NOAA18 data"
-pathL2PriN18 = data_folder + l2_primary_prefix + "n18_" + sceneTime + ".nc"
+pathL2PriN18 = globals.data_folder + l2_primary_prefix + "n18_" + sceneTime + ".nc"
 pathL2SecN18 = pathL2PriN18.replace("primary", "secondary")
-priN18 = CCI(pathL2PriN18)
-secN18 = CCI(pathL2SecN18)
+#priN18 = CCI(pathL2PriN18)
+#secN18 = CCI(pathL2SecN18)
 
 # MODIS AQUA paths and data
 print "Reading MODIS AQUA data"
-pathL2PriMYD = data_folder + l2_primary_prefix + "myd_" + sceneTime + ".nc"
+pathL2PriMYD = globals.data_folder + l2_primary_prefix + "myd_" + sceneTime + ".nc"
 pathL2SecMYD = pathL2PriMYD.replace("primary", "secondary")
-priMYD = CCI(pathL2PriMYD)
-secMYD = CCI(pathL2SecMYD)
+#priMYD = CCI(pathL2PriMYD)
+#secMYD = CCI(pathL2SecMYD)
 
 # ENVISAT AATSR paths and data
 print "Reading ENVISAT AATSR data"
-pathL2PriENV = data_folder + l2_primary_prefix + "env_" + sceneTime + ".nc"
+pathL2PriENV = globals.data_folder + l2_primary_prefix + "env_" + sceneTime + ".nc"
 pathL2SecENV = pathL2PriENV.replace("primary", "secondary")
-priENV = CCI(pathL2PriENV)
-secENV = CCI(pathL2SecENV)
+#priENV = CCI(pathL2PriENV)
+#secENV = CCI(pathL2SecENV)
 
 # N18 paths and data, RESAMPLED
 print "Reading resampled N18 data"
-pathL2N18PrimaryResampled = data_folder + N18PrimaryResampledName
+pathL2N18PrimaryResampled = globals.data_folder + N18PrimaryResampledName
 N18PrimaryResampled = CCI(pathL2N18PrimaryResampled)
 N18Masked = CCI(pathL2N18PrimaryResampled)
-pathL2N18SecondaryResampled = data_folder + N18SecondaryResampledName
+pathL2N18SecondaryResampled = globals.data_folder + N18SecondaryResampledName
 N18SecondaryResampled = CCI(pathL2N18SecondaryResampled)
 
 # MODIS AQUA paths and data, RESAMPLED
 print "Reading resampled MODIS AQUA data"
-pathL2MYDPrimaryResampled = data_folder + MYDPrimaryResampledName
+pathL2MYDPrimaryResampled = globals.data_folder + MYDPrimaryResampledName
 MYDPrimaryResampled = CCI(pathL2MYDPrimaryResampled)
-pathL2MYDSecondaryResampled = data_folder + MYDSecondaryResampledName
+pathL2MYDSecondaryResampled = globals.data_folder + MYDSecondaryResampledName
 MYDSecondaryResampled = CCI(pathL2MYDSecondaryResampled)
 
 # ENVISAT AATSR paths and data, RESAMPLED
 print "Reading resampled ENVISAT AATSR data"
-pathL2ENVPrimaryResampled = data_folder + ENVPrimaryResampledName
+pathL2ENVPrimaryResampled = globals.data_folder + ENVPrimaryResampledName
 ENVPrimaryResampled = CCI(pathL2ENVPrimaryResampled)
-pathL2ENVSecondaryResampled = data_folder + ENVSecondaryResampledName
+pathL2ENVSecondaryResampled = globals.data_folder + ENVSecondaryResampledName
 ENVSecondaryResampled = CCI(pathL2ENVSecondaryResampled)
 
 # subset borders in lat/lon
@@ -186,8 +186,8 @@ elif sceneTime == '07222058':
     poly_lons = [45, 90, 70, 30]
 
 # get all variables
-MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox=boundingBox)
-secMYD.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=MYDSlice)
+#MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox=boundingBox)
+#secMYD.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=MYDSlice)
 print "Getting all variables: N18 resampled"
 N18PrimaryResampled.getAllVariables()
 N18Masked.getAllVariables()
@@ -247,21 +247,21 @@ if doRGB:
     print "RGB: started."
     platform = "MYD"
     colourTupleMYD = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled, platform)
-    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
+    RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
     platform = "N18"
     colourTupleN18 = buildRGB(N18PrimaryResampled, N18SecondaryResampled, platform)
-    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
+    RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
     platform = "ENV"
     colourTupleENV = buildRGB(ENVPrimaryResampled, ENVSecondaryResampled, platform)
-    RGBName = figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
+    RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleENV, ENVSecondaryResampled.lat, ENVSecondaryResampled.lon, ENVSecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
     colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleENV[..., np.newaxis]), axis=2)
-    RGBName = figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
+    RGBName = globals.figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, poly_lats, poly_lons, N18SecondaryResampled.reflectance_in_channel_no_1,
                 calipsoLat, calipsoLon,
                 centrePoint[0], centrePoint[1])    
@@ -280,7 +280,7 @@ plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingB
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
         'ENV', colourMin=0, colourMax=1000)
 plotCCIMulti(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-        colourMin=0, colourMax=1000)
+             poly_lats, poly_lons, colourMin=0, colourMax=1000)
 
 variable = "cot"
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
@@ -290,7 +290,7 @@ plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingB
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
         'ENV', colourMin=0, colourMax=50)
 plotCCIMulti(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-        colourMin=0, colourMax=50)
+             poly_lats, poly_lons, colourMin=0, colourMax=50)
 
 variable = "cer"
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
@@ -300,14 +300,16 @@ plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingB
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
         'ENV', colourMin=0, colourMax=50)
 plotCCIMulti(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-        colourMin=0, colourMax=50)
+             poly_lats, poly_lons, colourMin=0, colourMax=50)
 
 # plot uncertainties
 figure_name = globals.figuresDir + sceneTime + "_uncertainties_percent.png"
 fig1 = plt.figure(figsize=(15, 15))
+gs1 = gridspec.GridSpec(2, 2)
+gs1.update(wspace=0.15, hspace=0.15) # set the spacing between axes.
 variable = 'ctp'
 variable_unc = variable + '_uncertainty'
-ax = fig1.add_subplot(2, 2, 1)
+ax = plt.subplot(gs1[0])
 ax.title.set_text('CTP')
 input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
 if sceneTime == globals.NA2:
@@ -318,7 +320,8 @@ plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingB
         'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
 variable = 'cot'
 variable_unc = variable + '_uncertainty'
-ax = fig1.add_subplot(2, 2, 2)
+ax = plt.subplot(gs1[1])
+#ax = fig1.add_subplot(2, 2, 2)
 ax.title.set_text('COT')
 input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
 if sceneTime == globals.NA2:
@@ -328,7 +331,7 @@ plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingB
         'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
 variable = 'cer'
 variable_unc = variable + '_uncertainty'
-ax = fig1.add_subplot(2, 2, 3)
+ax = plt.subplot(gs1[2])
 ax.title.set_text('CER')
 input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
 if sceneTime == globals.NA2:
@@ -337,7 +340,7 @@ if sceneTime == globals.NA2:
 plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
         'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
 variable = 'cc_total_unc'
-ax = fig1.add_subplot(2, 2, 4)
+ax = plt.subplot(gs1[3])
 ax.title.set_text('Cloud mask')
 input = getattr(MYDPrimaryResampled, variable)
 if sceneTime == globals.NA2:
@@ -374,7 +377,7 @@ collocateMYD = collocateCciAndCalipso(MYDPrimaryResampled, calipsoData, maxDista
 collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDistance, corrected)
 
 """Plot collocated data for COT, CTP, and CTT."""
-figurePath = figuresDir + "calipsoVsCci_" + sceneTime
+figurePath = globals.figuresDir + "calipsoVsCci_" + sceneTime
 if plotCot:
     figurePath += "_cot"
 else:
@@ -446,8 +449,8 @@ if sceneTime == globals.NA2:
     calculate_statistics(z, variable, 'ENV')
 data = np.vstack([x,y,z]).T
 bins = np.linspace(200, 1100, nbins)
-fig1 = plt.figure(figsize = (20, 10))
-ax=fig1.add_subplot(2,3,1)
+fig1 = plt.figure(figsize=(30, 10))
+ax=fig1.add_subplot(1,3,1)
 plt.hist(data, range=(0, 1100), normed=True, label=['N18','MYD','ENV'], bins=bins, color=['r', 'aqua', 'orange'])
 plt.legend(loc=2, title="(a)")
 ax.set_xlabel(variable.upper())
@@ -467,9 +470,9 @@ if sceneTime == globals.NA2:
     calculate_statistics(z, variable, 'ENV')
 data = np.vstack([x,y,z]).T
 bins = np.linspace(0, 50, nbins)
-ax=fig1.add_subplot(2,3,2)
+ax=fig1.add_subplot(1,3,2)
 plt.hist(data, range=(0, 50), normed=True, label=['N18','MYD','ENV'], bins=bins, color=['r', 'aqua', 'orange'])
-plt.legend(loc=1, title="(c)")
+plt.legend(loc=1, title="(b)")
 ax.set_xlabel(variable.upper())
 variable = 'cer'
 x = getattr(N18PrimaryResampled, variable).ravel().compressed()
@@ -487,9 +490,9 @@ if sceneTime == globals.NA2:
     calculate_statistics(z, variable, 'ENV')
 data = np.vstack([x,y,z]).T
 bins = np.linspace(0, 50, nbins)
-ax=fig1.add_subplot(2,3,3)
+ax=fig1.add_subplot(1,3,3)
 plt.hist(data, range=(0, 50), normed=True, label=['N18','MYD','ENV'], bins=bins, color=['r', 'aqua', 'orange'])
-plt.legend(loc=1, title="(e)")
+plt.legend(loc=1, title="(c)")
 ax.set_xlabel(variable.upper())
 
 # differences between retrievals: N18 - MYD, N18 - ENV, MYD - ENV
@@ -504,13 +507,13 @@ if sceneTime == globals.NA2:
     calculate_statistics(a, variable + 'd', 'N18')
     calculate_statistics(b, variable + 'd', 'MYD')
     calculate_statistics(c, variable + 'd', 'ENV')
-data = np.vstack([a, b, c]).T
-bins = np.linspace(-100, 100, nbins)
-#fig1 = plt.figure(figsize = (10, 10))
-ax=fig1.add_subplot(2,3,4)
-plt.hist(data, range=(0, 1100), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
-plt.legend(loc=2, title="(b)")
-ax.set_xlabel("$\Delta$ " + variable.upper())
+# data = np.vstack([a, b, c]).T
+# bins = np.linspace(-100, 100, nbins)
+# fig1 = plt.figure(figsize = (10, 10))
+# ax=fig1.add_subplot(2,3,4)
+# plt.hist(data, range=(0, 1100), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+# plt.legend(loc=2, title="(b)")
+# ax.set_xlabel("$\Delta$ " + variable.upper())
 variable = 'cot'
 x = getattr(N18PrimaryResampled, variable).ravel().compressed()
 y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
@@ -522,12 +525,12 @@ if sceneTime == globals.NA2:
     calculate_statistics(a, variable + 'd', 'N18')
     calculate_statistics(b, variable + 'd', 'MYD')
     calculate_statistics(c, variable + 'd', 'ENV')
-data = np.vstack([a, b, c]).T
-bins = np.linspace(-10, 10, nbins)
-ax=fig1.add_subplot(2,3,5)
-plt.hist(data, range=(0, 50), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
-ax.set_xlabel("$\Delta$ " + variable.upper())
-plt.legend(loc=1, title="(d)")
+# data = np.vstack([a, b, c]).T
+# bins = np.linspace(-10, 10, nbins)
+# ax=fig1.add_subplot(2,3,5)
+# plt.hist(data, range=(0, 50), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+# ax.set_xlabel("$\Delta$ " + variable.upper())
+# plt.legend(loc=1, title="(d)")
 variable = 'cer'
 x = getattr(N18PrimaryResampled, variable).ravel().compressed()
 y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
@@ -539,12 +542,12 @@ if sceneTime == globals.NA2:
     calculate_statistics(a, variable + 'd', 'N18')
     calculate_statistics(b, variable + 'd', 'MYD')
     calculate_statistics(c, variable + 'd', 'ENV')
-data = np.vstack([a, b, c]).T
-bins = np.linspace(-10, 10, nbins)
-ax=fig1.add_subplot(2,3,6)
-plt.hist(data, range=(0, 50), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
-ax.set_xlabel("$\Delta$ " + variable.upper())
-plt.legend(loc=1, title="(f)")
+# data = np.vstack([a, b, c]).T
+# bins = np.linspace(-10, 10, nbins)
+# ax=fig1.add_subplot(2,3,6)
+# plt.hist(data, range=(0, 50), normed=True, label=['N18 - MYD','N18 - ENV','MYD - ENV'], bins=bins, color=['r', 'aqua', 'orange'])
+# ax.set_xlabel("$\Delta$ " + variable.upper())
+# plt.legend(loc=1, title="(f)")
 plt.savefig(globals.figuresDir + sceneTime + '_histograms.png', bbox_inches='tight')
 
 
