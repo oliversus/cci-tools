@@ -1,5 +1,4 @@
-#!/usr/bin/python
-#/data/osus/Enthought/User/bin/python2.7
+#!/data/osus/Enthought/User/bin/python2.7
 
 from __future__ import division
 
@@ -303,7 +302,7 @@ plotCCIMulti(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boun
              poly_lats, poly_lons, colourMin=0, colourMax=50)
 
 # plot uncertainties
-figure_name = globals.figuresDir + sceneTime + "_uncertainties_percent.png"
+figure_name = globals.figuresDir + sceneTime + "_uncertainties_absolute.png" # "_uncertainties_percent.png"
 fig1 = plt.figure(figsize=(15, 15))
 gs1 = gridspec.GridSpec(2, 2)
 gs1.update(wspace=0.15, hspace=0.15) # set the spacing between axes.
@@ -311,7 +310,7 @@ variable = 'ctp'
 variable_unc = variable + '_uncertainty'
 ax = plt.subplot(gs1[0])
 ax.title.set_text('CTP')
-input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+input = getattr(MYDPrimaryResampled, variable_unc) # 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
 if sceneTime == globals.NA2:
     globals.latex_variables["NA2_ctp_unc_lt10"] = 100. * np.round(np.sum(input < 10.) / ma.count(input), 1)
     foo = input[~input.mask]
@@ -323,7 +322,7 @@ variable_unc = variable + '_uncertainty'
 ax = plt.subplot(gs1[1])
 #ax = fig1.add_subplot(2, 2, 2)
 ax.title.set_text('COT')
-input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+input = getattr(MYDPrimaryResampled, variable_unc) # 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
 if sceneTime == globals.NA2:
     foo = input[~input.mask]
     globals.latex_variables["NA2_cot_unc_median"] = np.round(np.nanmean(foo), 1)
@@ -333,7 +332,7 @@ variable = 'cer'
 variable_unc = variable + '_uncertainty'
 ax = plt.subplot(gs1[2])
 ax.title.set_text('CER')
-input = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+input = getattr(MYDPrimaryResampled, variable_unc) # 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
 if sceneTime == globals.NA2:
     foo = input[~input.mask]
     globals.latex_variables["NA2_cer_unc_median"] = np.round(np.nanmedian(foo), 1)
