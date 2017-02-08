@@ -76,13 +76,6 @@ minute = sceneTime[6:8]
 calipsoPath1km = globals.data_folder + "calipso_1km_" + sceneTime + ".hdf"
 calipsoPath5km = globals.data_folder + "calipso_5km_" + sceneTime + ".hdf"
 
-# Timos Daten:
-# Hector
-# L1: /cmsaf/cmsaf-cld6/thanschm/DATASET/HIRS_V2/N19/2012/01/W_XX-EUMETSAT-Darmstadt,SOUNDING+SATELLITE,NOAA19+HIRS_C_KNES_20120107122807.nc
-# L2: /cmsaf/cmsaf-cld2/thanschm/TOVS_ATOVS_CLOUD/FULL_L2/L2_HECTOR_V1_3
-# Calipso: /cmsaf/cmsaf-cld8/EXTERNAL_DATA/CALIPSO/LEVEL2/5km/2012/01/07/CAL_LID_L2_05kmCLay-Prov-V3-02.2012-01-07T13-31-18ZD.hdf
-
-
 hdf = SD(calipsoPath5km, SDC.READ)
 # Read geolocation
 lat = hdf.select('Latitude')
