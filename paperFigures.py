@@ -32,7 +32,8 @@ if len(argv) > 1:
         print "ERROR: 3rd argument doRGB should be [True/False]."
         sys.exit()
     sceneTime = argv[4] # 1) 07221915 2) 07270810 3) 07230021 4) 07222058
-    if argv[4] != '07221915' and argv[4] != '07270810' and argv[4] != '07230021' and argv[4] != '07222058':
+    if sceneTime not in globals.sceneTimes:
+    #if argv[4] != '07221915' and argv[4] != '07270810' and argv[4] != '07230021' and argv[4] != '07222058':
         print "ERROR: choose correct study date ('07221915' or '07270810' or '07230021' or '07222058')"
         sys.exit()
     if argv[5] == "True":
@@ -60,7 +61,7 @@ else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
-    sceneTime = '07222058'
+    sceneTime = '01071228'
     corrected = False
     plotCot = False
     plotCalipso = True
@@ -74,6 +75,13 @@ minute = sceneTime[6:8]
 
 calipsoPath1km = globals.data_folder + "calipso_1km_" + sceneTime + ".hdf"
 calipsoPath5km = globals.data_folder + "calipso_5km_" + sceneTime + ".hdf"
+
+# Timos Daten:
+# Hector
+# L1: /cmsaf/cmsaf-cld6/thanschm/DATASET/HIRS_V2/N19/2012/01/W_XX-EUMETSAT-Darmstadt,SOUNDING+SATELLITE,NOAA19+HIRS_C_KNES_20120107122807.nc
+# L2: /cmsaf/cmsaf-cld2/thanschm/TOVS_ATOVS_CLOUD/FULL_L2/L2_HECTOR_V1_3
+# Calipso: /cmsaf/cmsaf-cld8/EXTERNAL_DATA/CALIPSO/LEVEL2/5km/2012/01/07/CAL_LID_L2_05kmCLay-Prov-V3-02.2012-01-07T13-31-18ZD.hdf
+
 
 hdf = SD(calipsoPath5km, SDC.READ)
 # Read geolocation
