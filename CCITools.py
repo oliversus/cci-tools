@@ -18,6 +18,10 @@ from operator import itemgetter
 import globals
 import glob, re
 
+def get_range(tuple):
+    return tuple[1] - tuple[0]
+
+
 def writeCCI(path, data, targetGrid, primary, platform = "N18"):
         
     ncOut = Dataset(path, "w", format="NETCDF4")
@@ -1114,9 +1118,9 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp0') - N18.get('calipsoCtpBot0'), bottom=N18.get('calipsoCtpBot0'), width=width,
            color="lavenderblush", alpha=alpha, label="Calipso [COT > 0]", zorder=3)
     ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp1') - N18.get('calipsoCtpBot1'), bottom=N18.get('calipsoCtpBot1'), width=width,
-           color="lightpink", alpha=alpha, label="Calipso [COT > 0.15]", zorder=3)
+           color="thistle", alpha=alpha, label="Calipso [COT > 0.15]", zorder=3)
     ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp2') - N18.get('calipsoCtpBot2'), bottom=N18.get('calipsoCtpBot2'), width=width,
-           color="thistle", alpha=alpha, label="Calipso [COT > 1]", zorder=3)
+           color="lightpink", alpha=alpha, label="Calipso [COT > 1]", zorder=3)
     ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="orange", zorder=10)
     ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="aqua", zorder=10)
     ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR", c="r", zorder=10)
@@ -1125,16 +1129,54 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     order=[2,1,0,3,4,5]
     labels = [ labels[i] for i in order]
     handles = [handles[i] for i in order]
+    xmin = ax.get_xlim()[0]
+    xmax = ax.get_xlim()[1]
+    xrange = get_range(ax.get_xlim())
     if sceneTime == '07222058':
-        loc = 2
+        loc = 9
+        p1 = 61.75
+        p2 = 63.6
+        plt.axvline(x=p1, c="k", zorder=3)
+        plt.axvline(x=p2, c="k", zorder=3)
+        x_text1 = get_range((xmin, np.mean((xmin, p1)))) / xrange
+        plt.text(x_text1, 1., 'sector 1', ha='center', va='bottom', transform=ax.transAxes)
+        x_text2 = get_range((xmin, np.mean((p1, p2)))) / xrange
+        plt.text(x_text2, 1., 'sector 2', ha='center', va='bottom', transform=ax.transAxes)
+        x_text3 = get_range((xmin, np.mean((p2, xmax)))) / xrange
+        plt.text(x_text3, 1., 'sector 3', ha='center', va='bottom', transform=ax.transAxes)
     elif sceneTime == '07270810':
         loc = 1
+        p1 = 71.3
+        p2 = 72.2
+        p3 = 73.4
+        plt.axvline(x=p1, c="k", zorder=10)
+        plt.axvline(x=p2, c="k", zorder=10)
+        plt.axvline(x=p3, c="k", zorder=10)
+        x_text1 = get_range((xmin, np.mean((xmin, p1)))) / xrange
+        plt.text(x_text1, 1., 'sector 1', ha='center', va='bottom', transform=ax.transAxes)
+        x_text2 = get_range((xmin, np.mean((p1, p2)))) / xrange
+        plt.text(x_text2, 1., 'sector 2', ha='center', va='bottom', transform=ax.transAxes)
+        x_text3 = get_range((xmin, np.mean((p2, p3)))) / xrange
+        plt.text(x_text3, 1., 'sector 3', ha='center', va='bottom', transform=ax.transAxes)
+        x_text4 = get_range((xmin, np.mean((p3, xmax)))) / xrange
+        plt.text(x_text4, 1., 'sector 4', ha='center', va='bottom', transform=ax.transAxes)
     elif sceneTime == '07221915':
         loc = 1
+        p1 = 72.2
+        p2 = 73.7
+        plt.axvline(x=p1, c="k", zorder=10)
+        plt.axvline(x=p2, c="k", zorder=10)
+        x_text1 = get_range((xmin, np.mean((xmin, p1)))) / xrange
+        plt.text(x_text1, 1., 'sector 1', ha='center', va='bottom', transform=ax.transAxes)
+        x_text2 = get_range((xmin, np.mean((p1, p2)))) / xrange
+        plt.text(x_text2, 1., 'sector 2', ha='center', va='bottom', transform=ax.transAxes)
+        x_text3 = get_range((xmin, np.mean((p2, xmax)))) / xrange
+        plt.text(x_text3, 1., 'sector 3', ha='center', va='bottom', transform=ax.transAxes)
     else:
         loc = 3
-    leg = ax.legend(handles=handles, labels=labels, loc=loc, frameon=True, fancybox=True, fontsize=11)
-    leg.get_frame().set_alpha(0.5)
+    leg = plt.legend(handles=handles, labels=labels, loc=loc, frameon=True, fancybox=True, fontsize=11)
+    leg.set_zorder(10)
+    #leg.get_frame().set_alpha(0.5)
 
     """COT"""
     if plotCot:
