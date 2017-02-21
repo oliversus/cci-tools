@@ -1175,8 +1175,6 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     else:
         loc = 3
     leg = plt.legend(handles=handles, labels=labels, loc=loc, frameon=True, fancybox=True, fontsize=11)
-    leg.set_zorder(10)
-    #leg.get_frame().set_alpha(0.5)
 
     """COT"""
     if plotCot:
