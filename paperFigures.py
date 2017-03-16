@@ -32,9 +32,10 @@ if len(argv) > 1:
         print "ERROR: 3rd argument doRGB should be [True/False]."
         sys.exit()
     sceneTime = argv[4] # 1) 07221915 2) 07270810 3) 07230021 4) 07222058
+    globals.sceneTime = sceneTime
     if sceneTime not in globals.sceneTimes:
     #if argv[4] != '07221915' and argv[4] != '07270810' and argv[4] != '07230021' and argv[4] != '07222058':
-        print "ERROR: choose correct study date ('07221915' or '07270810' or '07230021' or '07222058')"
+        print "ERROR: choose correct study date (on of globals.sceneTimes)"
         sys.exit()
     if argv[5] == "True":
         corrected = True
@@ -61,7 +62,7 @@ else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
-    sceneTime = '07222058'
+    sceneTime = globals.sceneTimes[1]
     corrected = False
     plotCot = False
     plotCalipso = True
@@ -88,6 +89,7 @@ ctp = hdf.select('Layer_Top_Pressure')
 ctpBot = hdf.select('Layer_Base_Pressure')
 ctt = hdf.select('Layer_Top_Temperature')
 cth = hdf.select('Layer_Top_Altitude')
+cthBot = hdf.select('Layer_Base_Altitude')
 cloudFlag = hdf.select('Feature_Classification_Flags')
 sfcIce = hdf.select('NSIDC_Surface_Type')
 sfcElev = hdf.select('DEM_Surface_Elevation')
@@ -99,6 +101,7 @@ calipsoCTP = ctp[:,:] # 4208, 10
 calipsoCTPBot = ctpBot[:,:] # 4208, 10
 calipsoCTT = ctt[:,:] # 4208, 10
 calipsoCTH = cth[:,:] # 4208, 10
+calipsoCTHBot = cthBot[:,:] # 4208, 10
 calipsoFCF = cloudFlag[:,:] # 4208, 10: 0 is top, 9 bottom layer
 calipsoICE = sfcIce[:,:]
 calipsoTOP = sfcElev[:,:]
@@ -107,7 +110,7 @@ calipsoCODLayer = codCum[:,:] # 4208, 10: 0 is top, 9 bottom layer
 calipsoData = {'lat': calipsoLat, 'lon': calipsoLon,
                'cod': calipsoCOD, 'codLayered': calipsoCODLayer,
                'ctp': calipsoCTP, 'ctpBot': calipsoCTPBot,
-               'ctt': calipsoCTT, 'cth': calipsoCTH,
+               'ctt': calipsoCTT, 'cth': calipsoCTH, 'cthBot': calipsoCTHBot,
                'fcf': calipsoFCF, 'ice': calipsoICE,
                'top': calipsoTOP, 'typ': calipsoTYP}
 
@@ -137,11 +140,12 @@ pathL2SecMYD = pathL2PriMYD.replace("primary", "secondary")
 #secMYD = CCI(pathL2SecMYD)
 
 # ENVISAT AATSR paths and data
-print "Reading ENVISAT AATSR data"
-pathL2PriENV = globals.data_folder + l2_primary_prefix + "env_" + sceneTime + ".nc"
-pathL2SecENV = pathL2PriENV.replace("primary", "secondary")
-#priENV = CCI(pathL2PriENV)
-#secENV = CCI(pathL2SecENV)
+if sceneTime != globals.sceneTimes[4]:
+    print "Reading ENVISAT AATSR data"
+    pathL2PriENV = globals.data_folder + l2_primary_prefix + "env_" + sceneTime + ".nc"
+    pathL2SecENV = pathL2PriENV.replace("primary", "secondary")
+    #priENV = CCI(pathL2PriENV)
+    #secENV = CCI(pathL2SecENV)
 
 # N18 paths and data, RESAMPLED
 print "Reading resampled N18 data"
@@ -159,11 +163,12 @@ pathL2MYDSecondaryResampled = globals.data_folder + MYDSecondaryResampledName
 MYDSecondaryResampled = CCI(pathL2MYDSecondaryResampled)
 
 # ENVISAT AATSR paths and data, RESAMPLED
-print "Reading resampled ENVISAT AATSR data"
-pathL2ENVPrimaryResampled = globals.data_folder + ENVPrimaryResampledName
-ENVPrimaryResampled = CCI(pathL2ENVPrimaryResampled)
-pathL2ENVSecondaryResampled = globals.data_folder + ENVSecondaryResampledName
-ENVSecondaryResampled = CCI(pathL2ENVSecondaryResampled)
+if sceneTime != globals.sceneTimes[4]:
+    print "Reading resampled ENVISAT AATSR data"
+    pathL2ENVPrimaryResampled = globals.data_folder + ENVPrimaryResampledName
+    ENVPrimaryResampled = CCI(pathL2ENVPrimaryResampled)
+    pathL2ENVSecondaryResampled = globals.data_folder + ENVSecondaryResampledName
+    ENVSecondaryResampled = CCI(pathL2ENVSecondaryResampled)
 
 # subset borders in lat/lon
 if sceneTime == '07221915':
@@ -186,32 +191,53 @@ elif sceneTime == '07222058':
     boundingBox = [-180., -100., 45., 90.]
     poly_lats = [63, 72.5, 85, 65]
     poly_lons = [45, 90, 70, 30]
+elif sceneTime == '10241345':
+    centrePoint = [0, 0.]
+    boundingBox = [-30., 30., -7., 12.] #[-5., 5., -15., 20.] -7 12
+    poly_lats = [-15, 15, 20, 20]
+    poly_lons = [-5, 5, 5, -5]
 
 # get all variables
 #MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox=boundingBox)
 #secMYD.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=MYDSlice)
-print "Getting all variables: N18 resampled"
-N18PrimaryResampled.getAllVariables()
-N18Masked.getAllVariables()
-N18SecondaryResampled.getAllVariables()
-print "Getting all variables: MODIS resampled"
-MYDPrimaryResampled.getAllVariables()
-MYDSecondaryResampled.getAllVariables()
-print "Getting all variables: Envisat resampled"
-ENVPrimaryResampled.getAllVariables()
-ENVSecondaryResampled.getAllVariables()
+
+if sceneTime != globals.AFR:
+    print "Getting all variables: N18 resampled"
+    N18PrimaryResampled.getAllVariables()
+    N18Masked.getAllVariables()
+    N18SecondaryResampled.getAllVariables()
+    print "Getting all variables: MODIS resampled"
+    MYDPrimaryResampled.getAllVariables()
+    MYDSecondaryResampled.getAllVariables()
+    print "Getting all variables: Envisat resampled"
+    ENVPrimaryResampled.getAllVariables()
+    ENVSecondaryResampled.getAllVariables()
+else:
+    print "Getting all variables: N18 resampled"
+    slice = N18PrimaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox)
+    N18SecondaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=slice)
+    N18Masked.getAllVariables()
+    print "Getting all variables: MODIS resampled"
+    slice = MYDPrimaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox)
+    MYDSecondaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=slice)
 
 # mask all resampled pixels with cc_total < 1 to exclude fractional cloud coverage
 N18ResampledCloudMask = ma.masked_less(N18PrimaryResampled.cc_total, 1.).mask
 MYDResampledCloudMask = ma.masked_less(MYDPrimaryResampled.cc_total, 1.).mask
-ENVResampledCloudMask = ma.masked_less(ENVPrimaryResampled.cc_total, 1.).mask
-CloudMask = N18ResampledCloudMask + MYDResampledCloudMask + ENVResampledCloudMask
+if sceneTime != globals.sceneTimes[4]:
+    ENVResampledCloudMask = ma.masked_less(ENVPrimaryResampled.cc_total, 1.).mask
+    CloudMask = N18ResampledCloudMask + MYDResampledCloudMask + ENVResampledCloudMask
+else:
+    CloudMask = N18ResampledCloudMask + MYDResampledCloudMask
 
 # build mask of all pixels out of study area, i.e. where any sensor has no reflectance data
 N18ReflMask = N18SecondaryResampled.reflectance_in_channel_no_1.mask
 MYDReflMask = MYDSecondaryResampled.reflectance_in_channel_no_1.mask
-ENVReflMask = ENVSecondaryResampled.reflectance_in_channel_no_1.mask
-ReflMask = N18ReflMask + MYDReflMask + ENVReflMask
+if sceneTime != globals.sceneTimes[4]:
+    ENVReflMask = ENVSecondaryResampled.reflectance_in_channel_no_1.mask
+    ReflMask = N18ReflMask + MYDReflMask + ENVReflMask
+else:
+    ReflMask = N18ReflMask + MYDReflMask
 
 SuperMask = CloudMask + ReflMask
 #ReflMask = SuperMask
@@ -257,16 +283,24 @@ if doRGB:
     RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1,
             centrePoint[0], centrePoint[1])
-    platform = "ENV"
-    colourTupleENV = buildRGB(ENVPrimaryResampled, ENVSecondaryResampled, platform)
-    RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
-    plotRGB(RGBName, colourTupleENV, ENVSecondaryResampled.lat, ENVSecondaryResampled.lon, ENVSecondaryResampled.reflectance_in_channel_no_1,
-            centrePoint[0], centrePoint[1])
-    colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleENV[..., np.newaxis]), axis=2)
-    RGBName = globals.figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
-    plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, poly_lats, poly_lons, N18SecondaryResampled.reflectance_in_channel_no_1,
-                calipsoLat, calipsoLon,
-                centrePoint[0], centrePoint[1])    
+    if sceneTime != globals.sceneTimes[4]:
+        platform = "ENV"
+        colourTupleENV = buildRGB(ENVPrimaryResampled, ENVSecondaryResampled, platform)
+        RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
+        plotRGB(RGBName, colourTupleENV, ENVSecondaryResampled.lat, ENVSecondaryResampled.lon, ENVSecondaryResampled.reflectance_in_channel_no_1,
+                centrePoint[0], centrePoint[1])
+        colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleENV[..., np.newaxis]), axis=2)
+        RGBName = globals.figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
+        plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, poly_lats, poly_lons, N18SecondaryResampled.reflectance_in_channel_no_1,
+                    calipsoLat, calipsoLon,
+                    centrePoint[0], centrePoint[1])
+    else:
+        colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis]), axis=2)
+        RGBName = globals.figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
+        plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, poly_lats, poly_lons, N18SecondaryResampled.reflectance_in_channel_no_1,
+                    calipsoLat, calipsoLon,
+                    centrePoint[0], centrePoint[1], llcrnrlat = -20, urcrnrlat = 20)
+
     print "RGB: done."    
 
 print "Plotting data."
@@ -275,15 +309,15 @@ print "Plotting data."
 
 if plot_variables:
     # 1b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
-    variable = "ctp"
+    variable = "cth"
     plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-            'N18', colourMin=0, colourMax=1000)
+            'N18', colourMin=0, colourMax=10)
     plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-            'MYD', colourMin=0, colourMax=1000)
+            'MYD', colourMin=0, colourMax=10)
     plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-            'ENV', colourMin=0, colourMax=1000)
+            'ENV', colourMin=0, colourMax=10)
     plotCCIMulti(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-                 poly_lats, poly_lons, colourMin=0, colourMax=1000)
+                 poly_lats, poly_lons, colourMin=0, colourMax=10)
 
     variable = "cot"
     plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
@@ -359,7 +393,8 @@ if plot_variables:
 """mask all CCI pixels that do not have reflectance values for all 3 sensors"""
 N18PrimaryResampled.maskAllVariables(ReflMask)
 MYDPrimaryResampled.maskAllVariables(ReflMask)
-ENVPrimaryResampled.maskAllVariables(ReflMask)
+if sceneTime != globals.sceneTimes[4]:
+    ENVPrimaryResampled.maskAllVariables(ReflMask)
 """the maximum distance between Calipso and a grid box center is given by
     the great circle distance between the grid box center and one of its corners
     which is half of the grid box diagonal, which can be calculated with Pythagoras"""
@@ -377,7 +412,8 @@ maxDistance = boxDiag / 2.
     returning collocated CCI and Calipso data."""
 collocateN18 = collocateCciAndCalipso(N18PrimaryResampled, calipsoData, maxDistance, corrected)
 collocateMYD = collocateCciAndCalipso(MYDPrimaryResampled, calipsoData, maxDistance, corrected)
-collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDistance, corrected)
+if sceneTime != globals.sceneTimes[4]:
+    collocateENV = collocateCciAndCalipso(ENVPrimaryResampled, calipsoData, maxDistance, corrected)
 
 """Plot collocated data for COT, CTP, and CTT."""
 figurePath = globals.figuresDir + "calipsoVsCci_" + sceneTime
@@ -391,8 +427,10 @@ else:
     figurePath += "_uncorrectedCtp"
 figurePath += ".png"
 if plotCalipso:
-    plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime, plotCot)
-
+    if sceneTime != globals.sceneTimes[4]:
+        plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV=collocateENV, figurePath=figurePath, sceneTime=sceneTime, plotCot=plotCot)
+    else:
+        plotCciCalipsoCollocation(collocateN18, collocateMYD, figurePath=figurePath, sceneTime=sceneTime, plotCot=plotCot)
     # b) calculate min/mean/max time difference between grid boxes = TIMEDIFF (no plot)
 timeDiff = ((MYDPrimaryResampled.time - math.floor(MYDPrimaryResampled.time.min())) \
             - (N18PrimaryResampled.time - math.floor(N18PrimaryResampled.time.min()))) * 24 * 60
