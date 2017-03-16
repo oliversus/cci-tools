@@ -4,9 +4,10 @@ delLatLon=0.1
 
 # delLat delLon doRGB sceneTime corrected plotCot plotCalipso
 
-./paperFigures.py ${delLatLon} ${delLatLon} True 07222058 False False True
-./paperFigures.py ${delLatLon} ${delLatLon} True 07221915 False False True
-./paperFigures.py ${delLatLon} ${delLatLon} True 07270810 False False True
+./paperFigures.py ${delLatLon} ${delLatLon} False 07222058 False False True
+./paperFigures.py ${delLatLon} ${delLatLon} False 07221915 False False True
+./paperFigures.py ${delLatLon} ${delLatLon} False 07270810 False False True
+./paperFigures.py ${delLatLon} ${delLatLon} False 10241345 False False True
 
 # # case 07222058
 # # paper plot 1: corrected Ctp, no Cot
