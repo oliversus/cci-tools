@@ -21,10 +21,10 @@ if len(argv) > 1:
         print "ERROR: choose correct study date ('07221915' or '07270810' or '07230021' or '07222058')"
         sys.exit()
 else:
-    delLat = 0.5
-    delLon = 0.5
+    delLat = 0.1
+    delLon = 0.1
     primary = True
-    sceneTime = '07222058'
+    sceneTime = '10241345'
 
 month = sceneTime[0:2]
 day = sceneTime[2:4]
@@ -60,6 +60,9 @@ elif sceneTime == '07230021':
 elif sceneTime == '07222058':
     centrePoint = [74., -143.]
     boundingBox = [-180., -100., 38., 90.]
+elif sceneTime == '10241345':
+    centrePoint = [0., 0.]
+    boundingBox = [-20., 20., -30., 30.]
 
 # targetGrid:
 minLat = boundingBox[2]
@@ -85,16 +88,22 @@ pathL2SecMYD = pathL2PriMYD.replace("primary", "secondary")
 priMYD = CCI(pathL2PriMYD)
 secMYD = CCI(pathL2SecMYD)
 
+# pathL2PriMYD  = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD021KM.A2009297.1340.006.2012062145134.bspscs_000500702757.secondary.nc"
+# pathL2PriMYD2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD021KM.A2009297.1345.006.2012062145134.bspscs_000500702757.secondary.nc"
+# pathL2PriMYD  = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD021KM.A2009297.1350.006.2012062145130.bspscs_000500702757.secondary.nc"
+# pathL2PriMYD2 = "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD_merged_20091024_1340_1345_secondary.nc"
+
 # merge MODIS granules
-#mergeGranules(pathL2PriMYD, pathL2PriMYD2, "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD_merged_20080722_20552100_primary.nc")
-#mergeGranules(pathL2SecMYD, pathL2SecMYD2, "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD_merged_20080722_20552100_secondary.nc")
+# mergeGranules(pathL2PriMYD, pathL2PriMYD2, "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD_merged_20091024_1340_1350_secondary.nc")
+# mergeGranules(pathL2SecMYD, pathL2SecMYD2, "/cmsaf/cmsaf-cld7/esa_cloud_cci/data/v2.0/L2/MYD_merged_20091024_13551400_secondary.nc")
 
 # Envisat AATSR paths and data
-print "Reading ENVISAT AATSR data"
-pathL2PriENV = data_folder + l2_primary_prefix + "env_" + sceneTime + ".nc"
-pathL2SecENV = pathL2PriENV.replace("primary", "secondary")
-priENV = CCI(pathL2PriENV)
-secENV = CCI(pathL2SecENV)
+if sceneTime != '10241345':
+    print "Reading ENVISAT AATSR data"
+    pathL2PriENV = data_folder + l2_primary_prefix + "env_" + sceneTime + ".nc"
+    pathL2SecENV = pathL2PriENV.replace("primary", "secondary")
+    priENV = CCI(pathL2PriENV)
+    secENV = CCI(pathL2SecENV)
 
 # get all variables
 print "Getting all variables: NOAA18"
@@ -105,12 +114,13 @@ MYDSlice = priMYD.getAllVariables(doSlice = True, boundingBox = boundingBox)
 secMYD.getAllVariables(doSlice = True, boundingBox = boundingBox, primary = False, boxSlice = MYDSlice)
 # MYDSlice2 = priMYD2.getAllVariables(doSlice = True, boundingBox = boundingBox)
 # secMYD2.getAllVariables(doSlice = True, boundingBox = boundingBox, primary = False, boxSlice = MYDSlice2)
-print "Getting all variables: ENVISAT AATSR"
-ENVSlice = priENV.getAllVariables(doSlice = True, boundingBox = boundingBox)
-ENVSlice = secENV.getAllVariables(doSlice = True, boundingBox = boundingBox)
-secENV.reflec_nadir_0670 /= secENV.reflec_nadir_0670.max()
-secENV.reflec_nadir_0870 /= secENV.reflec_nadir_0870.max()
-secENV.reflec_nadir_1600 /= secENV.reflec_nadir_1600.max()
+if sceneTime != '10241345':
+    print "Getting all variables: ENVISAT AATSR"
+    ENVSlice = priENV.getAllVariables(doSlice = True, boundingBox = boundingBox)
+    ENVSlice = secENV.getAllVariables(doSlice = True, boundingBox = boundingBox)
+    secENV.reflec_nadir_0670 /= secENV.reflec_nadir_0670.max()
+    secENV.reflec_nadir_0870 /= secENV.reflec_nadir_0870.max()
+    secENV.reflec_nadir_1600 /= secENV.reflec_nadir_1600.max()
 
 """the maximum distance between CCI and a grid box center is given by
     the great circle distance between the grid box center and one of its corners
@@ -138,10 +148,11 @@ if primary:
                                                    "" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary)
-    resampledData = resampleCCI(priENV, targetGrid, "ENV", maxDistance)
-    fileName = os.path.splitext(pathL2PriENV)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
-    print "    writing file " + fileName
-    writeCCI(fileName, resampledData, targetGrid, primary)
+    if sceneTime != '10241345':
+        resampledData = resampleCCI(priENV, targetGrid, "ENV", maxDistance)
+        fileName = os.path.splitext(pathL2PriENV)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
+        print "    writing file " + fileName
+        writeCCI(fileName, resampledData, targetGrid, primary)
 else:
     resampledData = resampleCCI(secMYD, targetGrid, "MYD", maxDistance, lat_in = priMYD.lat, lon_in = priMYD.lon)
     fileName = os.path.splitext(pathL2SecMYD)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
@@ -151,10 +162,11 @@ else:
     fileName = os.path.splitext(pathL2SecN18)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
     print "    writing file " + fileName
     writeCCI(fileName, resampledData, targetGrid, primary, platform = "N18")
-    resampledData = resampleCCI(secENV, targetGrid, "ENV", maxDistance, lat_in = secENV.lat, lon_in = secENV.lon)
-    fileName = os.path.splitext(pathL2SecENV)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
-    print "    writing file " + fileName
-    writeCCI(fileName, resampledData, targetGrid, primary, platform = "ENV")
+    if sceneTime != '10241345':
+        resampledData = resampleCCI(secENV, targetGrid, "ENV", maxDistance, lat_in = secENV.lat, lon_in = secENV.lon)
+        fileName = os.path.splitext(pathL2SecENV)[0] + "_resampled_" + str(delLon) + "_" + str(delLat) + ".nc"
+        print "    writing file " + fileName
+        writeCCI(fileName, resampledData, targetGrid, primary, platform = "ENV")
 
 
 
