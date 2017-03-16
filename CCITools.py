@@ -733,7 +733,8 @@ def plotRGBMulti(figureName, colourTuple,
         mesh = map.pcolormesh(lon, lat, dummy, color = colourTuple[:,:,i], latlon = True, linewidth = 0.05, clip_on = True)
         mesh.set_array(None)
         mesh = map.plot(xCalipso, yCalipso, color = 'red', linestyle="dashed", linewidth=2.)
-        draw_screen_poly(poly_lats, poly_lons, map)
+        if globals.sceneTime != globals.AFR:
+            draw_screen_poly(poly_lats, poly_lons, map)
     plt.savefig(figureName, bbox_inches='tight')
   
 def mergeGranules(path1, path2, outPath):
@@ -789,9 +790,11 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     if corrected:
         cciCtt = np.ma.compressed(cci.ctt_corrected)
         cciCtp = np.ma.compressed(cci.ctp_corrected)
+        cciCth = np.ma.compressed(cci.cth_corrected)
     else:
         cciCtt = np.ma.compressed(cci.ctt)
         cciCtp = np.ma.compressed(cci.ctp)
+        cciCth = np.ma.compressed(cci.cth)
     cciCtpUnc = np.ma.compressed(cci.ctp_uncertainty)
     cciCph = np.ma.compressed(cci.phase)
     cciCty = np.ma.compressed(cci.cldtype)
@@ -803,6 +806,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     calCodLay = calipso.get('codLayered')
     calCtt = calipso.get('ctt')
     calCth = calipso.get('cth')
+    calCthBot = calipso.get('cthBot')
     calCtp = calipso.get('ctp')
     calCtpBot = calipso.get('ctpBot')
     calFcf = calipso.get('fcf')
@@ -826,6 +830,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     colCotUnc = []
     colCtt = []
     colCtp = []
+    colCth = []
     colCtpUnc = []
     colCph = []
     colCty = []
@@ -837,14 +842,20 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     colCodCalipso = []
     colCTP0Calipso = []
     colCTPBot0Calipso = []
+    colCTH0Calipso = []
+    colCTHBot0Calipso = []
     colCTT0Calipso = []
     colCTP1Calipso = []
     colCTPBot1Calipso = []
+    colCTH1Calipso = []
+    colCTHBot1Calipso = []
     colCTT1Calipso = []
     colCTP2Calipso = []
     colCTPBot2Calipso = []
+    colCTH2Calipso = []
+    colCTHBot2Calipso = []
     colCTT2Calipso = []
-    colCTHCalipso = []
+    # colCTHCalipso = []
     colPhase0Calipso = []
     colPhase1Calipso = []
     colPhase2Calipso = []
@@ -881,6 +892,7 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
             colCotUnc.append(cciCotUnc[targetIndex])
             colCtt.append(cciCtt[targetIndex])
             colCtp.append(cciCtp[targetIndex])
+            colCth.append(cciCth[targetIndex])
             colCtpUnc.append(cciCtpUnc[targetIndex])
             colCph.append(cciCph[targetIndex])
             colCty.append(cciCty[targetIndex])
@@ -908,7 +920,8 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
                         colCTP0Calipso.append(calCtp[i, l])
                         colCTPBot0Calipso.append(calCtpBot[i, l])
                         colCTT0Calipso.append(calCtt[i, l] + 273.15)
-                        colCTHCalipso.append(calCth[i, l])
+                        colCTH0Calipso.append(calCth[i, l])
+                        colCTHBot0Calipso.append(calCthBot[i, l])
                     if colCodCalipsoSum > 0.15 and not secondLayerFound:
                         """add data to collocated variables"""
                         """get the phase and type"""
@@ -917,6 +930,8 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
                         colType1Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
                         colCTP1Calipso.append(calCtp[i, l])
                         colCTPBot1Calipso.append(calCtpBot[i, l])
+                        colCTH1Calipso.append(calCth[i, l])
+                        colCTHBot1Calipso.append(calCthBot[i, l])
                         colCTT1Calipso.append(calCtt[i, l] + 273.15)
                         colLatCalipso1.append(lat)
                     if colCodCalipsoSum > 1. and not thirdLayerFound:
@@ -927,6 +942,8 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
                         colType2Calipso.append(int(flagBin[flagLength - 12:flagLength - 9], 2))  # 0=low transp,1=low opaque,2=stratoc,3=low broken cum.,4=altocum.,5=altostr.,6=cirrus,7=deep conv.
                         colCTP2Calipso.append(calCtp[i, l])
                         colCTPBot2Calipso.append(calCtpBot[i, l])
+                        colCTH2Calipso.append(calCth[i, l])
+                        colCTHBot2Calipso.append(calCthBot[i, l])
                         colCTT2Calipso.append(calCtt[i, l] + 273.15)
                         colLatCalipso2.append(lat)
 
@@ -940,14 +957,17 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
                         colType0Calipso.append(np.nan)
                         colCTP0Calipso.append(np.nan)
                         colCTPBot0Calipso.append(np.nan)
+                        colCTH0Calipso.append(np.nan)
+                        colCTHBot0Calipso.append(np.nan)
                         colCTT0Calipso.append(np.nan)
                         colCodCalipso.append(calCod[i])
-                        colCTHCalipso.append(np.nan)
                     if not secondLayerFound:
                         colPhase1Calipso.append(np.nan)
                         colType1Calipso.append(np.nan)
                         colCTP1Calipso.append(np.nan)
                         colCTPBot1Calipso.append(np.nan)
+                        colCTH1Calipso.append(np.nan)
+                        colCTHBot1Calipso.append(np.nan)
                         colCTT1Calipso.append(np.nan)
                         colLatCalipso1.append(lat)
                     if not thirdLayerFound:
@@ -955,6 +975,8 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
                         colType2Calipso.append(np.nan)
                         colCTP2Calipso.append(np.nan)
                         colCTPBot2Calipso.append(np.nan)
+                        colCTH2Calipso.append(np.nan)
+                        colCTHBot2Calipso.append(np.nan)
                         colCTT2Calipso.append(np.nan)
                         colLatCalipso2.append(lat)
         i += 1
@@ -970,9 +992,10 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     colCTTCalipso0 = np.array(colCTT0Calipso)
     colCTTCalipso1 = np.array(colCTT1Calipso)
     colCTTCalipso2 = np.array(colCTT2Calipso)
-    colCTHCalipso = np.array(colCTHCalipso)
     colCtp = np.array(colCtp)
     colCtp = np.ma.masked_greater(colCtp, 10000.)
+    colCth = np.array(colCth)
+    colCth = np.ma.masked_greater(colCth, 100000.)
     colCtpUnc = np.array(colCtpUnc)
     colCtpUnc = np.ma.masked_greater(colCtpUnc, 10000.)
     colCTPCalipso0 = np.array(colCTP0Calipso)
@@ -981,6 +1004,12 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     colCTPBotCalipso0 = np.array(colCTPBot0Calipso)
     colCTPBotCalipso1 = np.array(colCTPBot1Calipso)
     colCTPBotCalipso2 = np.array(colCTPBot2Calipso)
+    colCTHCalipso0 = np.array(colCTH0Calipso)
+    colCTHCalipso1 = np.array(colCTH1Calipso)
+    colCTHCalipso2 = np.array(colCTH2Calipso)
+    colCTHBotCalipso0 = np.array(colCTHBot0Calipso)
+    colCTHBotCalipso1 = np.array(colCTHBot1Calipso)
+    colCTHBotCalipso2 = np.array(colCTHBot2Calipso)
     colLatCalipso = np.array(colLatCalipso)
     colCph = np.array(colCph)
     colCty = np.array(colCty)
@@ -994,31 +1023,31 @@ def collocateCciAndCalipso(cci, calipso, maxDistance, corrected):
     colIceCalipso = np.array(colIceCalipso)
     colTopCalipso = np.array(colTopCalipso)
     colTypCalipso = np.array(colTypCalipso)
-    out = {'cciCot': colCot, 'cciCotUnc': colCotUnc, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCtpUnc': colCtpUnc,
+    out = {'cciCot': colCot, 'cciCotUnc': colCotUnc, 'cciCtt': colCtt, 'cciCtp': colCtp, 'cciCtpUnc': colCtpUnc, 'cciCth': colCth,
            'cciCph': colCph, 'cciCty': colCty, 'cciNise': colNise,
            'calipsoCtt0': colCTTCalipso0, 'calipsoCtp0': colCTPCalipso0, 'calipsoCtpBot0': colCTPBotCalipso0,
-           'calipsoPhase0': colPhase0Calipso, 'calipsoType0': colType0Calipso,
+           'calipsoCth0': colCTHCalipso0, 'calipsoCthBot0': colCTHBotCalipso0, 'calipsoPhase0': colPhase0Calipso, 'calipsoType0': colType0Calipso,
            'calipsoCtt1': colCTTCalipso1, 'calipsoCtp1': colCTPCalipso1, 'calipsoCtpBot1': colCTPBotCalipso1,
-           'calipsoPhase1': colPhase1Calipso, 'calipsoType1': colType1Calipso,
+           'calipsoCth1': colCTHCalipso1, 'calipsoCthBot1': colCTHBotCalipso1, 'calipsoPhase1': colPhase1Calipso, 'calipsoType1': colType1Calipso,
            'calipsoCtt2': colCTTCalipso2, 'calipsoCtp2': colCTPCalipso2, 'calipsoCtpBot2': colCTPBotCalipso2,
-           'calipsoPhase2': colPhase2Calipso, 'calipsoType2': colType2Calipso, 'calipsoCth': colCTHCalipso,
+           'calipsoCth2': colCTHCalipso2, 'calipsoCthBot2': colCTHBotCalipso2, 'calipsoPhase2': colPhase2Calipso, 'calipsoType2': colType2Calipso, #'calipsoCth': colCTHCalipso,
            'calipsoLat0': colLatCalipso, 'calipsoLat1': colLatCalipso1, 'calipsoLat2': colLatCalipso2,
            'calipsoCOD': colCodCalipso, 'calipsoIce': colIceCalipso, 'calipsoTop': colTopCalipso, 'calipsoTyp': colTypCalipso}
     return out
 
-def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePath, sceneTime, plotCot):
+def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV=None, figurePath=None, sceneTime=None, plotCot=False):
 
     print "Plotting collocated data for Calipso and CCI."
 
     """First copy data dictionaries so that original values are preserved when manipulating data"""
     N18 = copy.deepcopy(collocateN18)
     MYD = copy.deepcopy(collocateMYD)
-    ENV = copy.deepcopy(collocateENV)
+    if collocateENV:
+        ENV = copy.deepcopy(collocateENV)
 
     """calculate CCI COT minus Calipso COD = deltaCOT"""
     """next step:
         plot only for those pixels where both say ice"""
-    calipso_variable = 'calipsoCtp0'
     cc4cl_variable = 'cciCtp'
     fig = plt.figure(figsize=(20, 10))
     """loop over both phases"""
@@ -1026,26 +1055,34 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
         for j in range(0, 3):
             N18_phase = copy.deepcopy(collocateN18)
             MYD_phase = copy.deepcopy(collocateMYD)
-            ENV_phase = copy.deepcopy(collocateENV)
+            if collocateENV:
+                ENV_phase = copy.deepcopy(collocateENV)
             cphCal0 = correct_calipso_phase(N18_phase.get('calipsoPhase' + str(j)))
             cphN18 = np.round(correct_cci_phase(N18_phase.get('cciCph')))
             cphMYD = np.round(correct_cci_phase(MYD_phase.get('cciCph')))
-            cphENV = np.round(correct_cci_phase(ENV_phase.get('cciCph')))
+            if collocateENV:
+                cphENV = np.round(correct_cci_phase(ENV_phase.get('cciCph')))
             """phase to be matched"""
             phase_to_match = i
             """is used to remove non-phase-matching pixels"""
             is_no_phase_match_N18 = np.logical_or(cphCal0 != phase_to_match, cphN18 != phase_to_match)
             is_no_phase_match_MYD = np.logical_or(cphCal0 != phase_to_match, cphMYD != phase_to_match)
-            is_no_phase_match_ENV = np.logical_or(cphCal0 != phase_to_match, cphENV != phase_to_match)
+            if collocateENV:
+                is_no_phase_match_ENV = np.logical_or(cphCal0 != phase_to_match, cphENV != phase_to_match)
             """then, calculate difference between CCI and calipso"""
+            calipso_variable = 'calipsoCtp' + str(j)
             deltaCtpN18 = N18_phase.get(cc4cl_variable) - N18_phase.get(calipso_variable)
             deltaCtpMYD = MYD_phase.get(cc4cl_variable) - MYD_phase.get(calipso_variable)
-            deltaCtpENV = ENV_phase.get(cc4cl_variable) - ENV_phase.get(calipso_variable)
+            if collocateENV:
+                deltaCtpENV = ENV_phase.get(cc4cl_variable) - ENV_phase.get(calipso_variable)
             """before accounting for phase matches, calculate biases for paper statistics"""
             N18_lt_0 = 100. * np.sum(deltaCtpN18 < 0) / len(deltaCtpN18)
             MYD_lt_0 = 100. * np.sum(deltaCtpMYD < 0) / len(deltaCtpMYD)
-            ENV_lt_0 = 100. * np.sum(deltaCtpENV < 0) / len(deltaCtpENV)
-            total_lt_0 = np.round(np.nanmean([N18_lt_0, MYD_lt_0, ENV_lt_0]), 1)
+            if collocateENV:
+                ENV_lt_0 = 100. * np.sum(deltaCtpENV < 0) / len(deltaCtpENV)
+                total_lt_0 = np.round(np.nanmean([N18_lt_0, MYD_lt_0, ENV_lt_0]), 1)
+            else:
+                total_lt_0 = np.round(np.nanmean([N18_lt_0, MYD_lt_0]), 1)
             if sceneTime == globals.NA1:
                 globals.latex_variables['NA1_ctp_bias'] = total_lt_0
             elif sceneTime == globals.NA2:
@@ -1058,10 +1095,15 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
                     lat_min = 73.7
                 elif sceneTime == globals.SIB:
                     lat_min = 74.
+                elif sceneTime == globals.AFR:
+                    lat_min = -20.
                 N18_bias = np.nanmean(deltaCtpN18[N18_phase.get('calipsoLat0') > lat_min])
                 MYD_bias = np.nanmean(deltaCtpMYD[MYD_phase.get('calipsoLat0') > lat_min])
-                ENV_bias = np.nanmean(deltaCtpENV[ENV_phase.get('calipsoLat0') > lat_min])
-                total_bias = np.round(np.nanmean([N18_bias, MYD_bias, ENV_bias]), 1)
+                if collocateENV:
+                    ENV_bias = np.nanmean(deltaCtpENV[ENV_phase.get('calipsoLat0') > lat_min])
+                    total_bias = np.round(np.nanmean([N18_bias, MYD_bias, ENV_bias]), 1)
+                else:
+                    total_bias = np.round(np.nanmean([N18_bias, MYD_bias]), 1)
                 if sceneTime == globals.NA1:
                     globals.latex_variables['NA1_ctp_bias_part'] = total_bias
                 elif sceneTime == globals.SIB:
@@ -1070,21 +1112,24 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
             """now, account for phase matching"""
             deltaCtpN18[is_no_phase_match_N18] = np.nan
             deltaCtpMYD[is_no_phase_match_MYD] = np.nan
-            deltaCtpENV[is_no_phase_match_ENV] = np.nan
+            if collocateENV:
+                deltaCtpENV[is_no_phase_match_ENV] = np.nan
 
             """and get retrieval uncertainties"""
             cotUncN18 = N18_phase.get(cc4cl_variable + 'Unc')
             cotUncN18[is_no_phase_match_N18] = np.nan
             cotUncMYD = MYD_phase.get(cc4cl_variable + 'Unc')
             cotUncMYD[is_no_phase_match_MYD] = np.nan
-            cotUncENV = ENV_phase.get(cc4cl_variable + 'Unc')
-            cotUncENV[is_no_phase_match_ENV] = np.nan
+            if collocateENV:
+                cotUncENV = ENV_phase.get(cc4cl_variable + 'Unc')
+                cotUncENV[is_no_phase_match_ENV] = np.nan
             """plot these values"""
             panel = 3 * i + j - 2
             ax = fig.add_subplot(2, 3, panel)
-            ax.scatter(cotUncN18, deltaCtpN18, label="AVHRR")
-            ax.scatter(cotUncMYD, deltaCtpMYD, label="MODIS AQUA", c="red")
-            ax.scatter(cotUncENV, deltaCtpENV, label="AATSR", c="green")
+            ax.scatter(cotUncN18, abs(deltaCtpN18), label="AVHRR")
+            ax.scatter(cotUncMYD, abs(deltaCtpMYD), label="MODIS AQUA", c="red")
+            if collocateENV:
+                ax.scatter(cotUncENV, abs(deltaCtpENV), label="AATSR", c="green")
             if phase_to_match == 1:
                 phase = "water"
             else:
@@ -1105,29 +1150,38 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     fig = plt.figure(figsize=(15, 10))
     minX = plotLat0.min()
     maxX = plotLat0.max()
+    # if sceneTime == globals.AFR:
+    #     minX = -8.
+    #     maxX = 13.
     """CTP"""
     ax = fig.add_subplot(2, 1, 1)  # several plots, vertically arranged
     width = (max(plotLat2)-min(plotLat2)) / len(plotLat2) # bar width
     ax.set_xlim([minX - width * 0.5, maxX + width * 0.5])
-    ax.set_ylim([100, 1000])
-    plt.gca().invert_yaxis()
+    ax.set_ylim([0, 12])
+    if sceneTime == globals.sceneTimes[4]:
+        ax.set_ylim([0, 17])
+    #plt.gca().invert_yaxis()
     if not plotCot:
         plot_topography(N18, plotLat0, ax)
         ax.set_xlabel("Latitude")
     alpha = 1
-    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp0') - N18.get('calipsoCtpBot0'), bottom=N18.get('calipsoCtpBot0'), width=width,
-           color="lavenderblush", alpha=alpha, label="Calipso [COT > 0]", zorder=3)
-    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp1') - N18.get('calipsoCtpBot1'), bottom=N18.get('calipsoCtpBot1'), width=width,
-           color="thistle", alpha=alpha, label="Calipso [COT > 0.15]", zorder=3)
-    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCtp2') - N18.get('calipsoCtpBot2'), bottom=N18.get('calipsoCtpBot2'), width=width,
-           color="lightpink", alpha=alpha, label="Calipso [COT > 1]", zorder=3)
-    ax.scatter(plotLat0, ENV.get('cciCtp'), label="AATSR", c="orange", zorder=10)
-    ax.scatter(plotLat0, MYD.get('cciCtp'), label="MODIS AQUA", c="aqua", zorder=10)
-    ax.scatter(plotLat0, N18.get('cciCtp'), label="AVHRR", c="r", zorder=10)
-    ax.set_ylabel("CTP [hPa]")
+    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCth0') - N18.get('calipsoCthBot0'), bottom=N18.get('calipsoCthBot0'), width=width,
+           color="lavenderblush", alpha=alpha, label="Calipso [COT > 0]", zorder=3, linewidth=0.5)
+    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCth1') - N18.get('calipsoCthBot1'), bottom=N18.get('calipsoCthBot1'), width=width,
+           color="thistle", alpha=alpha, label="Calipso [COT > 0.15]", zorder=3, linewidth=0.5)
+    ax.bar(plotLat2 - width * 0.5, N18.get('calipsoCth2') - N18.get('calipsoCthBot2'), bottom=N18.get('calipsoCthBot2'), width=width,
+           color="lightpink", alpha=alpha, label="Calipso [COT > 1]", zorder=3, linewidth=0.5)
+    if collocateENV:
+        ax.scatter(plotLat0, ENV.get('cciCth'), label="AATSR", c="orange", zorder=10)
+    ax.scatter(plotLat0, MYD.get('cciCth'), label="MODIS AQUA", c="aqua", zorder=10)
+    ax.scatter(plotLat0, N18.get('cciCth'), label="AVHRR", c="r", zorder=10)
+    ax.set_ylabel("height [km]")
     handles, labels = ax.get_legend_handles_labels()
-    order=[2,1,0,3,4,5]
-    labels = [ labels[i] for i in order]
+    if collocateENV:
+        order=[2,1,0,3,4,5]
+    else:
+        order = [1, 0, 2, 3, 4]
+    labels = [labels[i] for i in order]
     handles = [handles[i] for i in order]
     xmin = ax.get_xlim()[0]
     xmax = ax.get_xlim()[1]
@@ -1146,9 +1200,21 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
         plt.text(x_text3, 1., 'sector 3', ha='center', va='bottom', transform=ax.transAxes)
     elif sceneTime == '07270810':
         loc = 1
-        p1 = 71.3
-        p2 = 72.2
-        p3 = 73.4
+        p1 = 72.2
+        p2 = 73.52
+        plt.axvline(x=p1, c="k", zorder=3)
+        plt.axvline(x=p2, c="k", zorder=3)
+        x_text1 = get_range((xmin, np.mean((xmin, p1)))) / xrange
+        plt.text(x_text1, 1., 'sector 1', ha='center', va='bottom', transform=ax.transAxes)
+        x_text2 = get_range((xmin, np.mean((p1, p2)))) / xrange
+        plt.text(x_text2, 1., 'sector 2', ha='center', va='bottom', transform=ax.transAxes)
+        x_text3 = get_range((xmin, np.mean((p2, xmax)))) / xrange
+        plt.text(x_text3, 1., 'sector 3', ha='center', va='bottom', transform=ax.transAxes)
+    elif sceneTime == '07221915':
+        loc = 1
+        p1 = 71.4
+        p2 = 72.1
+        p3 = 73.8
         plt.axvline(x=p1, c="k", zorder=10)
         plt.axvline(x=p2, c="k", zorder=10)
         plt.axvline(x=p3, c="k", zorder=10)
@@ -1160,10 +1226,10 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
         plt.text(x_text3, 1., 'sector 3', ha='center', va='bottom', transform=ax.transAxes)
         x_text4 = get_range((xmin, np.mean((p3, xmax)))) / xrange
         plt.text(x_text4, 1., 'sector 4', ha='center', va='bottom', transform=ax.transAxes)
-    elif sceneTime == '07221915':
-        loc = 1
-        p1 = 72.2
-        p2 = 73.7
+    elif sceneTime == globals.AFR:
+        loc = "upper left"
+        p1 = -3.9
+        p2 = 4.82
         plt.axvline(x=p1, c="k", zorder=10)
         plt.axvline(x=p2, c="k", zorder=10)
         x_text1 = get_range((xmin, np.mean((xmin, p1)))) / xrange
@@ -1184,7 +1250,8 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
         ax.set_xlim([minX - width * 0.5, maxX + width * 0.5])
         plot_topography(N18, plotLat0, ax)
         ax.scatter(plotLat0, MYD.get('cciCot'), c="orange", zorder=10)
-        ax.scatter(plotLat0, ENV.get('cciCot'), c="aqua", zorder=10)
+        if collocateENV:
+            ax.scatter(plotLat0, ENV.get('cciCot'), c="aqua", zorder=10)
         ax.scatter(plotLat0, N18.get('cciCot'), c="r", zorder=10)
         foo = np.where(N18.get('calipsoCOD')==0, np.nan, N18.get('calipsoCOD'))
         ax.scatter(plotLat0, foo, c="thistle", zorder=10)
@@ -1206,10 +1273,11 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     ctyMYD = np.round(MYD.get('cciCty'), 0)
     ctyMYD[ctyMYD == 0.] = np.nan
     ctyMYD[ctyMYD > 10.] = np.nan
-    cphENV = correct_cci_phase(ENV.get('cciCph'))
-    ctyENV = np.round(ENV.get('cciCty'), 0)
-    ctyENV[ctyENV == 0.] = np.nan
-    ctyENV[ctyENV > 10.] = np.nan
+    if collocateENV:
+        cphENV = correct_cci_phase(ENV.get('cciCph'))
+        ctyENV = np.round(ENV.get('cciCty'), 0)
+        ctyENV[ctyENV == 0.] = np.nan
+        ctyENV[ctyENV > 10.] = np.nan
 
     """fraction of pixels for which CC4CL phase equals Calipso"""
     for i in range(3):
@@ -1221,16 +1289,27 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
             cal = cphCal2
         phase_match_N18 = 100. * np.sum(cal == np.round(cphN18, 0)) / np.sum(~np.isnan(cal))
         phase_match_MYD = 100. * np.sum(cal == np.round(cphMYD, 0)) / np.sum(~np.isnan(cal))
-        phase_match_ENV = 100. * np.sum(cal == np.round(cphENV, 0)) / np.sum(~np.isnan(cal))
-        if i == 0:
-            phase_match_calipso_CC4CL_layer0 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),
-                                                        1)
-        elif i == 1:
-            phase_match_calipso_CC4CL_layer1 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),
-                                                        1)
-        elif i == 2:
-            phase_match_calipso_CC4CL_layer2 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),
-                                                        1)
+        if collocateENV:
+            phase_match_ENV = 100. * np.sum(cal == np.round(cphENV, 0)) / np.sum(~np.isnan(cal))
+            if i == 0:
+                phase_match_calipso_CC4CL_layer0 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),
+                                                            1)
+            elif i == 1:
+                phase_match_calipso_CC4CL_layer1 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),
+                                                            1)
+            elif i == 2:
+                phase_match_calipso_CC4CL_layer2 = np.round(np.nanmean([phase_match_N18, phase_match_MYD, phase_match_ENV]),                                                            1)
+        else:
+            if i == 0:
+                phase_match_calipso_CC4CL_layer0 = np.round(
+                np.nanmean([phase_match_N18, phase_match_MYD]), 1)
+            elif i == 1:
+                phase_match_calipso_CC4CL_layer1 = np.round(
+                np.nanmean([phase_match_N18, phase_match_MYD]), 1)
+            elif i == 2:
+                phase_match_calipso_CC4CL_layer2 = np.round(
+                np.nanmean([phase_match_N18, phase_match_MYD]), 1)
+
     if sceneTime == globals.NA1:
         globals.latex_variables['phase_match_calipso_CC4CL_NA1_layer0'] = phase_match_calipso_CC4CL_layer0
         globals.latex_variables['phase_match_calipso_CC4CL_NA1_layer1'] = phase_match_calipso_CC4CL_layer1
@@ -1267,8 +1346,11 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     """fraction of cloudy Calipso pixels that are cloud-free in CC4CL"""
     cfree_N18 = 100. * np.sum(np.isnan(cphN18) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
     cfree_MYD = 100. * np.sum(np.isnan(cphMYD) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
-    cfree_ENV = 100. * np.sum(np.isnan(cphENV) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
-    cfree_calipso_cloudy_CC4CL = np.round(np.mean([cfree_N18, cfree_MYD, cfree_ENV]), 1)
+    if collocateENV:
+        cfree_ENV = 100. * np.sum(np.isnan(cphENV) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
+        cfree_calipso_cloudy_CC4CL = np.round(np.mean([cfree_N18, cfree_MYD, cfree_ENV]), 1)
+    else:
+        cfree_calipso_cloudy_CC4CL = np.round(np.mean([cfree_N18, cfree_MYD]), 1)
     if sceneTime == globals.NA1:
         globals.latex_variables['cfree_calipso_cloudy_CC4CL_NA1'] = cfree_calipso_cloudy_CC4CL
     if sceneTime == globals.NA2:
@@ -1276,7 +1358,10 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     if sceneTime == globals.SIB:
         globals.latex_variables['cfree_calipso_cloudy_CC4CL_SIB'] = cfree_calipso_cloudy_CC4CL
 
-    df = DataFrame([cphCal0, cphCal1, cphCal2, cphN18, cphMYD, cphENV])
+    if collocateENV:
+        df = DataFrame([cphCal0, cphCal1, cphCal2, cphN18, cphMYD, cphENV])
+    else:
+        df = DataFrame([cphCal0, cphCal1, cphCal2, cphN18, cphMYD])
     vals = np.around(df.values, 2)
     normal = plt.Normalize(np.nanmin(vals) - 1, np.nanmax(vals) + 1)
     cell_colours = plt.cm.RdBu(normal(vals))
@@ -1291,31 +1376,53 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV, figurePa
     cell_colours[abs(cell_colours) > 900.] = 0.5
     cell_colours[cell_colours[0:3,:,0]==0.5, 1] = 0.5
     cell_colours[:,:,3] = 0.8
-    row_labels = ["Calipso [COT > 0]", "Calipso [COT > 0.15]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
+    if collocateENV:
+        row_labels = ["Calipso [COT > 0]", "Calipso [COT > 0.15]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA", "AATSR"]
+    else:
+        row_labels = ["Calipso [COT > 0]", "Calipso [COT > 0.15]", "Calipso [COT > 1]", "AVHRR", "MODIS AQUA"]
     cell_text = np.chararray((len(row_labels), len(plotLat0)))
-    cell_text[0,] = cty0
-    cell_text[1,] = cty1
-    cell_text[2,] = cty2
-    cell_text[3,] = ctyN18
-    cell_text[4,] = ctyMYD
-    cell_text[5,] = ctyENV
-    table = plt.table(cellText=cell_text,
-                      rowLabels=row_labels,
-                      cellColours=cell_colours,
-                      bbox=[0., -0.45, 1., 0.3],
-                      loc='bottom')
+    if sceneTime != globals.AFR:
+        cell_text[0,] = cty0
+        cell_text[1,] = cty1
+        cell_text[2,] = cty2
+        cell_text[3,] = ctyN18
+        cell_text[4,] = ctyMYD
+        if collocateENV:
+            cell_text[5,] = ctyENV
+        table = plt.table(cellText=cell_text,
+                          rowLabels=row_labels,
+                          cellColours=cell_colours,
+                          bbox=[0., -0.45, 1., 0.32],
+                          loc='bottom')
+    else:
+        cell_text[0,] = ""
+        cell_text[1,] = ""
+        cell_text[2,] = ""
+        cell_text[3,] = ""
+        cell_text[4,] = ""
+        table = plt.table(cellText=cell_text,
+                          rowLabels=row_labels,
+                          cellColours=cell_colours,
+                          bbox=[0., -0.45, 1., 0.3],
+                          loc='bottom')
+    table.scale(2., 2.)
+
+
     # iterate through cells of a table
     table_props = table.properties()
     table_cells = table_props['child_artists']
     for cell in table_cells:
         cell._text.set_color('white')
+        cell.set_linewidth(0.5)
     table._cells[(0, -1)]._text.set_color('black')
     table._cells[(1, -1)]._text.set_color('black')
     table._cells[(2, -1)]._text.set_color('black')
     table._cells[(3, -1)]._text.set_color('black')
     table._cells[(4, -1)]._text.set_color('black')
-    table._cells[(5, -1)]._text.set_color('black')
+    if collocateENV:
+        table._cells[(5, -1)]._text.set_color('black')
     """save figure"""
+    fig.tight_layout()
     plt.savefig(figurePath, bbox_inches='tight')
 
 def randomMode(data, max=11):
@@ -1368,7 +1475,7 @@ def correct_cci_phase(phase):
 
 def plot_topography(data, lat, ax):
     """Surface elevation, snow/ice, surface type"""
-    topography = data.get('calipsoTop') * 1000.
+    topography = data.get('calipsoTop') #* 1000.
     topoMax = topography.max()
     ice = data.get('calipsoIce')
     # calipso ice/snow values: 1-100, 101, 102 (not used), 103
@@ -1378,35 +1485,35 @@ def plot_topography(data, lat, ax):
     sea_masked = ma.masked_equal(surface_type, 17)
     topography_masked = topography[ice_masked.mask].copy()
     lat_masked = lat[ice_masked.mask].copy()
-    ax2 = ax.twinx()
-    ax2.set_ylabel("surface elevation [m]")
-    minX = lat.min()
-    maxX = lat.max()
-    width = (maxX - minX) / len(lat) # bar width
-    ax2.set_xlim([minX - width * 0.5, maxX + width * 0.5])
-    ax2.set_ylim(0, topoMax * 5)
+    # ax2 = ax.twinx()
+    # ax2.set_ylabel("surface elevation [m]")
+    # minX = lat.min()
+    # maxX = lat.max()
+    # width = (maxX - minX) / len(lat) # bar width
+    # ax2.set_xlim([minX - width * 0.5, maxX + width * 0.5])
+    # ax2.set_ylim(ax.get_ylim()) #ax2.set_ylim(0, topoMax * 5)
     if topoMax < 500.:
         yInterval = 100
     else:
         yInterval = 200.
-    yticks = np.arange(0, topoMax, yInterval)
+    #yticks = np.arange(0, topoMax, yInterval)
     lw = 5.
-    ax2.fill_between(lat, topography+10, facecolor="green", alpha=0.5, zorder=1, linewidth=lw, edgecolor="")
+    ax.fill_between(lat, topography, facecolor="green", alpha=0.5, zorder=1, linewidth=lw, edgecolor="")
     # sea
     if sea_masked.count() < len(sea_masked):
         splits = get_mask_segments_start_and_length(sea_masked.mask)
         for start, length in splits:
             x = lat[start:start+length]
             y = topography[start:start+length]
-            ax2.plot(x, y, c="blue", linewidth=lw, zorder=1)
+            ax.plot(x, y, c="blue", linewidth=lw, zorder=1)
     # ice
     if ice_masked.count() < len(ice_masked):
         splits = get_mask_segments_start_and_length(ice_masked.mask)
         for start, length in splits:
             x = lat[start:start+length]
             y = topography[start:start+length]-10
-            ax2.plot(x, y, c="grey", linewidth=3, zorder=1)
-    ax2.set_yticks(yticks)
+            ax.plot(x, y, c="grey", linewidth=3, zorder=1)
+    #ax.set_yticks(yticks)
 
 def update_latex_variables(path):
     """loop over all tex files in main folder"""
