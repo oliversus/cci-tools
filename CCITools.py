@@ -650,9 +650,12 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
             res = 'l',
             llcrnrlat = 45, urcrnrlat = 80, llcrnrlon = -180, urcrnrlon = -150,
             cmin = None, cmax = None,
-            mask = None):    
+            mask = None, latCalipso=None, lonCalipso=None):
 
     # define map projection
+    height = 2000000
+    if globals.sceneName is "AFR":
+        height = 3500000
     map = Basemap(width = width, height = height,
                   resolution='l', projection = 'stere',
                   lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
@@ -668,6 +671,9 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
     
     # draw grid lines
     gridSpacing = 5.
+    if globals.sceneName is "AFR":
+        llcrnrlat = -30
+        urcrnrlat = 30
     map.drawparallels(
         np.arange(llcrnrlat, urcrnrlat, gridSpacing),
         color = 'black', linewidth = 0.5,
@@ -676,10 +682,40 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
         np.arange(-180, 180, 10.),
         color = '0.25', linewidth = 0.5,
         labels=[False, False, False, True])
-        
-    # map.pcolormesh(lon, lat, x[:,:,0], latlon = True, linewidth = 0.05, clip_on = True)
+
     mesh = map.pcolormesh(lon, lat, dummy, color=colourTuple, latlon=True, linewidth=0.05, clip_on=True)
     mesh.set_array(None)
+    # define calipso lat, lon
+    if latCalipso is not None:
+        x, y = np.reshape(lonCalipso, (lonCalipso.shape[0], 1)), np.reshape(latCalipso, (latCalipso.shape[0], 1))
+        # remove pixels with positive/negative longitudes
+        if globals.sceneName is "NA1":
+            y = y[x < 0.]; x = x[x < 0.]
+        elif globals.sceneName is "SIB":
+            y = y[x > 0.]; x = x[x > 0.]
+        segments = globals.calipso_segments.loc[globals.sceneName]
+        y1 = find_nearest(y, segments[0]); x1 = x[y == y1]
+        y2 = find_nearest(y, segments[1]); x2 = x[y == y2]
+        map.drawgreatcircle(x1, y1, x2, y2, color="red", linewidth=2., linestyle="dashed")  # east
+        y1 = find_nearest(y, segments[1]); x1 = x[y == y1]
+        y2 = find_nearest(y, segments[2]); x2 = x[y == y2]
+        map.drawgreatcircle(x1, y1, x2, y2, color="red", linewidth=2.)  # east
+        y1 = find_nearest(y, segments[2]); x1 = x[y == y1]
+        y2 = find_nearest(y, segments[3]); x2 = x[y == y2]
+        map.drawgreatcircle(x1, y1, x2, y2, color="red", linewidth=2., linestyle="dashed")  # east
+
+    # draw boundaries for
+    # ENVISAT
+    boundaries = globals.boundaries_ENV.loc[globals.sceneName]
+    map.drawgreatcircle(*boundaries[0:4], color="yellow", linewidth=2.) # east -133.5, 52., -115.5, 75.
+    map.drawgreatcircle(*boundaries[4:8], color="yellow", linewidth=2.) # west -129., 45., -105., 71
+    # MODIS
+    boundaries = globals.boundaries_MODIS.loc[globals.sceneName]
+    map.drawgreatcircle(*boundaries[0:4], color="orange", linewidth=2.) # east
+    map.drawgreatcircle(*boundaries[4:8], color="orange", linewidth=2.) # west
+
+    #draw_screen_poly(poly_lats, poly_lons, map)
+
     plt.savefig(figureName, bbox_inches='tight')
 
 def plotRGBMulti(figureName, colourTuple,
@@ -1150,9 +1186,9 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV=None, fig
     fig = plt.figure(figsize=(15, 10))
     minX = plotLat0.min()
     maxX = plotLat0.max()
-    # if sceneTime == globals.AFR:
-    #     minX = -8.
-    #     maxX = 13.
+    if sceneTime == globals.AFR:
+        minX = -7.
+        maxX = 12.
     """CTP"""
     ax = fig.add_subplot(2, 1, 1)  # several plots, vertically arranged
     width = (max(plotLat2)-min(plotLat2)) / len(plotLat2) # bar width
@@ -1559,3 +1595,7 @@ def calculate_statistics(data, variable, platform):
     globals.latex_variables[variable + 'Std' + platform] = np.round(np.nanstd(data), 1)
     globals.latex_variables[variable + 'Skew' + platform] = np.round(stats.skew(data), 1)
     globals.latex_variables[variable + 'Kurt' + platform] = np.round(stats.kurtosis(data), 1)
+
+def find_nearest(array,value):
+    idx = (np.abs(array-value)).argmin()
+    return array[idx]

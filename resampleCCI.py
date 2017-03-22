@@ -21,8 +21,8 @@ if len(argv) > 1:
         print "ERROR: choose correct study date ('07221915' or '07270810' or '07230021' or '07222058')"
         sys.exit()
 else:
-    delLat = 0.1
-    delLon = 0.1
+    delLat = 0.5
+    delLon = 0.5
     primary = True
     sceneTime = '10241345'
 

@@ -62,10 +62,36 @@ else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
-    sceneTime = globals.sceneTimes[1]
+    sceneTime = globals.sceneTimes[4]
     corrected = False
     plotCot = False
     plotCalipso = True
+
+# subset borders in lat/lon
+if sceneTime == '07221915':
+    globals.sceneName = "NA1"
+    centrePoint = [72.5, -111.]
+    boundingBox = [-179., 0., 40, 90]
+    poly_lats = [58.5, 78, 83.5, 63]
+    poly_lons = [-121, -73, -63., -128.5]
+elif sceneTime == '07222058':
+    globals.sceneName = "NA2"
+    centrePoint = [62., -125.]
+    boundingBox = [-180., -100., 45., 90.]
+    poly_lats = [63, 72.5, 85, 65]
+    poly_lons = [45, 90, 70, 30]
+elif sceneTime == '07270810':
+    globals.sceneName = "SIB"
+    centrePoint = [73., 55.]
+    boundingBox = [-10., 130., 45., 90.]
+    poly_lats = [62.5, 78., 83.5, 63.5]
+    poly_lons = [43, 105, 110, 37.5]
+elif sceneTime == '10241345':
+    globals.sceneName = "AFR"
+    centrePoint = [2.5, -1.]
+    boundingBox = [-30., 30., -30, 30.] #[-5., 5., -15., 20.] -7 12
+    poly_lats = [-15, 15, 20, 20]
+    poly_lons = [-5, 5, 5, -5]
 
 plot_variables = False
 plot_statistics = False
@@ -170,33 +196,6 @@ if sceneTime != globals.sceneTimes[4]:
     pathL2ENVSecondaryResampled = globals.data_folder + ENVSecondaryResampledName
     ENVSecondaryResampled = CCI(pathL2ENVSecondaryResampled)
 
-# subset borders in lat/lon
-if sceneTime == '07221915':
-    centrePoint = [72.5, -111.]
-    boundingBox = [-179., 0., 40, 90]
-    poly_lats = [58.5, 78, 83.5, 63]
-    poly_lons = [-121, -73, -63., -128.5]
-elif sceneTime == '07270810':
-    centrePoint = [73., 55.]
-    boundingBox = [-10., 130., 45., 90.]
-    poly_lats = [62.5, 78., 83.5, 63.5]
-    poly_lons = [43, 105, 110, 37.5]
-elif sceneTime == '07230021':
-    centrePoint = [71., 173.]
-    boundingBox = [140., -160., 45., 90.]
-    poly_lats = [63, 79., 85, 65]
-    poly_lons = [45, 90, 70, 30]
-elif sceneTime == '07222058':
-    centrePoint = [62., -125.]
-    boundingBox = [-180., -100., 45., 90.]
-    poly_lats = [63, 72.5, 85, 65]
-    poly_lons = [45, 90, 70, 30]
-elif sceneTime == '10241345':
-    centrePoint = [0, 0.]
-    boundingBox = [-30., 30., -7., 12.] #[-5., 5., -15., 20.] -7 12
-    poly_lats = [-15, 15, 20, 20]
-    poly_lons = [-5, 5, 5, -5]
-
 # get all variables
 #MYDSlice = priMYD.getAllVariables(doSlice=True, boundingBox=boundingBox)
 #secMYD.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=MYDSlice)
@@ -214,12 +213,19 @@ if sceneTime != globals.AFR:
     ENVSecondaryResampled.getAllVariables()
 else:
     print "Getting all variables: N18 resampled"
-    slice = N18PrimaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox)
-    N18SecondaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=slice)
+    slice = N18PrimaryResampled.getAllVariables()
+    N18SecondaryResampled.getAllVariables()
     N18Masked.getAllVariables()
     print "Getting all variables: MODIS resampled"
-    slice = MYDPrimaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox)
-    MYDSecondaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=slice)
+    slice = MYDPrimaryResampled.getAllVariables()
+    MYDSecondaryResampled.getAllVariables()
+    # print "Getting all variables: N18 resampled"
+    # slice = N18PrimaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox)
+    # N18SecondaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=slice)
+    # N18Masked.getAllVariables()
+    # print "Getting all variables: MODIS resampled"
+    # slice = MYDPrimaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox)
+    # MYDSecondaryResampled.getAllVariables(doSlice=True, boundingBox=boundingBox, primary=False, boxSlice=slice)
 
 # mask all resampled pixels with cc_total < 1 to exclude fractional cloud coverage
 N18ResampledCloudMask = ma.masked_less(N18PrimaryResampled.cc_total, 1.).mask
@@ -231,6 +237,10 @@ else:
     CloudMask = N18ResampledCloudMask + MYDResampledCloudMask
 
 # build mask of all pixels out of study area, i.e. where any sensor has no reflectance data
+# if not np.ma.is_masked(N18SecondaryResampled):
+#     N18SecondaryResampled.reflectance_in_channel_no_1 = N18SecondaryResampled.reflectance_in_channel_no_1.view(np.ma.MaskedArray)
+# if not np.ma.is_masked(MYDSecondaryResampled):
+#     MYDSecondaryResampled.reflectance_in_channel_no_1 = MYDSecondaryResampled.reflectance_in_channel_no_1.view(np.ma.MaskedArray)
 N18ReflMask = N18SecondaryResampled.reflectance_in_channel_no_1.mask
 MYDReflMask = MYDSecondaryResampled.reflectance_in_channel_no_1.mask
 if sceneTime != globals.sceneTimes[4]:
@@ -277,18 +287,18 @@ if doRGB:
     colourTupleMYD = buildRGB(MYDPrimaryResampled, MYDSecondaryResampled, platform)
     RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleMYD, MYDSecondaryResampled.lat, MYDSecondaryResampled.lon, MYDSecondaryResampled.reflectance_in_channel_no_1,
-            centrePoint[0], centrePoint[1])
+            centrePoint[0], centrePoint[1], latCalipso=calipsoLat, lonCalipso=calipsoLon)
     platform = "N18"
     colourTupleN18 = buildRGB(N18PrimaryResampled, N18SecondaryResampled, platform)
     RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
     plotRGB(RGBName, colourTupleN18, N18SecondaryResampled.lat, N18SecondaryResampled.lon, N18SecondaryResampled.reflectance_in_channel_no_1,
-            centrePoint[0], centrePoint[1])
+            centrePoint[0], centrePoint[1], latCalipso=calipsoLat, lonCalipso=calipsoLon)
     if sceneTime != globals.sceneTimes[4]:
         platform = "ENV"
         colourTupleENV = buildRGB(ENVPrimaryResampled, ENVSecondaryResampled, platform)
         RGBName = globals.figuresDir + "RGB_" + platform + "_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
         plotRGB(RGBName, colourTupleENV, ENVSecondaryResampled.lat, ENVSecondaryResampled.lon, ENVSecondaryResampled.reflectance_in_channel_no_1,
-                centrePoint[0], centrePoint[1])
+                centrePoint[0], centrePoint[1], latCalipso=calipsoLat, lonCalipso=calipsoLon)
         colourTupleMulti = np.concatenate((colourTupleN18[..., np.newaxis], colourTupleMYD[..., np.newaxis], colourTupleENV[..., np.newaxis]), axis=2)
         RGBName = globals.figuresDir + "RGB_multi_" + delLatStr + "x" + delLonStr + "_" + sceneTime + ".png"
         plotRGBMulti(RGBName, colourTupleMulti, N18SecondaryResampled.lat, N18SecondaryResampled.lon, poly_lats, poly_lons, N18SecondaryResampled.reflectance_in_channel_no_1,
