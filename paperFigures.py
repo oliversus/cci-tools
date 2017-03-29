@@ -7,7 +7,7 @@ import numpy as np
 from CCITools import buildRGB, plotRGB,\
     plotRGBMulti, greatCircle, collocateCciAndCalipso, \
     plotCciCalipsoCollocation, plotCCI, plotCCIMulti, \
-    update_latex_variables, calculate_statistics
+    update_latex_variables, calculate_statistics, ttest_significance_level
 import sys
 import numpy.ma as ma
 from pyhdf.SD import SD, SDC
@@ -62,7 +62,7 @@ else:
     delLat = "0.1"
     delLon = "0.1"
     doRGB = False
-    sceneTime = globals.sceneTimes[4]
+    sceneTime = globals.sceneTimes[1]
     corrected = False
     plotCot = False
     plotCalipso = True
@@ -94,7 +94,7 @@ elif sceneTime == '10241345':
     poly_lons = [-5, 5, 5, -5]
 
 plot_variables = False
-plot_statistics = False
+plot_statistics = True
 globals.sceneTime = sceneTime
 delLat_delLon = delLat + "_" + delLon
 month = sceneTime[0:2]
@@ -359,10 +359,13 @@ if plot_variables:
     ax = plt.subplot(gs1[0])
     ax.title.set_text('CTP')
     input = getattr(MYDPrimaryResampled, variable_unc) # 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+    input_relative = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
     if sceneTime == globals.NA2:
-        globals.latex_variables["NA2_ctp_unc_lt10"] = 100. * np.round(np.sum(input < 10.) / ma.count(input), 1)
+        globals.latex_variables["NA2_ctp_unc_lt10"] = 100. * np.round(np.sum(input_relative < 10.) / ma.count(input_relative), 1)
         foo = input[~input.mask]
         globals.latex_variables["NA2_ctp_unc_median"] = np.round(np.nanmedian(foo), 1)
+        foo = input_relative[~input_relative.mask]
+        globals.latex_variables["NA2_ctp_unc_median_relative"] = np.round(np.nanmedian(foo), 1)
     plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
             'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
     variable = 'cot'
@@ -371,21 +374,27 @@ if plot_variables:
     #ax = fig1.add_subplot(2, 2, 2)
     ax.title.set_text('COT')
     input = getattr(MYDPrimaryResampled, variable_unc) # 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+    input_relative = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
     if sceneTime == globals.NA2:
         foo = input[~input.mask]
         globals.latex_variables["NA2_cot_unc_median"] = np.round(np.nanmean(foo), 1)
+        foo = input_relative[~input_relative.mask]
+        globals.latex_variables["NA2_cot_unc_median_relative"] = np.round(np.nanmean(foo), 1)
     plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-            'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
+            'MYD', input=input, colourMin=0, colourMax=10, create_figure=False)
     variable = 'cer'
     variable_unc = variable + '_uncertainty'
     ax = plt.subplot(gs1[2])
     ax.title.set_text('CER')
     input = getattr(MYDPrimaryResampled, variable_unc) # 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
+    input_relative = 100. * getattr(MYDPrimaryResampled, variable_unc) / getattr(MYDPrimaryResampled, variable)
     if sceneTime == globals.NA2:
         foo = input[~input.mask]
         globals.latex_variables["NA2_cer_unc_median"] = np.round(np.nanmedian(foo), 1)
+        foo = input_relative[~input_relative.mask]
+        globals.latex_variables["NA2_cer_unc_median_relative"] = np.round(np.nanmedian(foo), 1)
     plotCCI(N18PrimaryResampled, MYDPrimaryResampled, ENVPrimaryResampled, boundingBox, centrePoint, variable,
-            'MYD', input=input, colourMin=0, colourMax=50, create_figure=False)
+            'MYD', input=input, colourMin=0, colourMax=20, create_figure=False)
     variable = 'cc_total_unc'
     ax = plt.subplot(gs1[3])
     ax.title.set_text('Cloud mask')
@@ -485,17 +494,19 @@ if plot_statistics:
     ENVSecondaryResampled.maskAllVariables(ReflMask)
 
     nbins = 30
-    ttest_threshold = 0.01
+    ttest_threshold_05 = 0.05
+    ttest_threshold_01 = 0.01
+    ttest_threshold_001 = 0.001
     variable = 'ctp'
     x = getattr(N18PrimaryResampled, variable).ravel().compressed()
     y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
     z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
-    if stats.ttest_ind(x, y).pvalue > ttest_threshold:
-        print variable + " ttest for N18 + MYD is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, y).pvalue)
-    if stats.ttest_ind(x, z).pvalue > ttest_threshold:
-        print variable + " ttest for N18 + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, z).pvalue)
-    if stats.ttest_ind(y, z).pvalue > ttest_threshold:
-        print variable + " ttest for MYD + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(y, z).pvalue)
+    t_xy = stats.ttest_ind(x, y).pvalue
+    t_xz = stats.ttest_ind(x, z).pvalue
+    t_yz = stats.ttest_ind(y, z).pvalue
+    ttest_significance_level(variable, t_xy, "N18/MYD")
+    ttest_significance_level(variable, t_xz, "N18/ENV")
+    ttest_significance_level(variable, t_yz, "MYD/ENV")
     if sceneTime == globals.NA2:
         calculate_statistics(x, variable, 'N18')
         calculate_statistics(y, variable, 'MYD')
@@ -511,12 +522,12 @@ if plot_statistics:
     x = getattr(N18PrimaryResampled, variable).ravel().compressed()
     y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
     z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
-    if stats.ttest_ind(x, y).pvalue > ttest_threshold:
-        print variable + " ttest for N18 + MYD is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, y).pvalue)
-    if stats.ttest_ind(x, z).pvalue > ttest_threshold:
-        print variable + " ttest for N18 + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, z).pvalue)
-    if stats.ttest_ind(y, z).pvalue > ttest_threshold:
-        print variable + " ttest for MYD + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(y, z).pvalue)
+    t_xy = stats.ttest_ind(x, y).pvalue
+    t_xz = stats.ttest_ind(x, z).pvalue
+    t_yz = stats.ttest_ind(y, z).pvalue
+    ttest_significance_level(variable, t_xy, "N18/MYD")
+    ttest_significance_level(variable, t_xz, "N18/ENV")
+    ttest_significance_level(variable, t_yz, "MYD/ENV")
     if sceneTime == globals.NA2:
         calculate_statistics(x, variable, 'N18')
         calculate_statistics(y, variable, 'MYD')
@@ -531,12 +542,12 @@ if plot_statistics:
     x = getattr(N18PrimaryResampled, variable).ravel().compressed()
     y = getattr(MYDPrimaryResampled, variable).ravel().compressed()
     z = getattr(ENVPrimaryResampled, variable).ravel().compressed()
-    if stats.ttest_ind(x, y).pvalue > ttest_threshold:
-        print variable + " ttest for N18 + MYD is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, y).pvalue)
-    if stats.ttest_ind(x, z).pvalue > ttest_threshold:
-        print variable + " ttest for N18 + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(x, z).pvalue)
-    if stats.ttest_ind(y, z).pvalue > ttest_threshold:
-        print variable + " ttest for MYD + ENV is > " + str(ttest_threshold) + ": " + str(stats.ttest_ind(y, z).pvalue)
+    t_xy = stats.ttest_ind(x, y).pvalue
+    t_xz = stats.ttest_ind(x, z).pvalue
+    t_yz = stats.ttest_ind(y, z).pvalue
+    ttest_significance_level(variable, t_xy, "N18/MYD")
+    ttest_significance_level(variable, t_xz, "N18/ENV")
+    ttest_significance_level(variable, t_yz, "MYD/ENV")
     if sceneTime == globals.NA2:
         calculate_statistics(x, variable, 'N18')
         calculate_statistics(y, variable, 'MYD')

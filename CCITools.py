@@ -17,6 +17,7 @@ import os
 from operator import itemgetter
 import globals
 import glob, re
+import scipy.stats as stats
 
 def get_range(tuple):
     return tuple[1] - tuple[0]
@@ -655,7 +656,8 @@ def plotRGB(figureName, colourTuple, lat, lon, dummy,
     # define map projection
     height = 2000000
     if globals.sceneName is "AFR":
-        height = 3500000
+        height = 2800000
+        width = 2800000 * 2.5
     map = Basemap(width = width, height = height,
                   resolution='l', projection = 'stere',
                   lat_ts = lat_0, lat_0 = lat_0, lon_0 = lon_0)
@@ -1121,10 +1123,15 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV=None, fig
                 total_lt_0 = np.round(np.nanmean([N18_lt_0, MYD_lt_0]), 1)
             if sceneTime == globals.NA1:
                 globals.latex_variables['NA1_ctp_bias'] = total_lt_0
+                globals.latex_variables['NA1_length'] = len(cphCal0)
             elif sceneTime == globals.NA2:
                 globals.latex_variables['NA2_ctp_bias'] = total_lt_0
+                globals.latex_variables['NA2_length'] = len(cphCal0)
             elif sceneTime == globals.SIB:
                 globals.latex_variables['SIB_ctp_bias'] = total_lt_0
+                globals.latex_variables['SIB_length'] = len(cphCal0)
+            elif sceneTime == globals.AFR:
+                globals.latex_variables['AFR_length'] = len(cphCal0)
 
             if sceneTime != globals.NA2:
                 if sceneTime == globals.NA1:
@@ -1376,9 +1383,28 @@ def plotCciCalipsoCollocation(collocateN18, collocateMYD, collocateENV=None, fig
 
     """fraction of cloud-free Calipso pixels that are also cloud-free in CC4CL"""
     if sceneTime == globals.NA2:
-        cfree_cc4cl_and_calipso_NA2 = np.round(100. * np.sum(np.isnan(cphN18) & np.isnan(cphCal0)) / np.sum(np.isnan(cty0)), 1)
+        cfree_cc4cl_and_calipso_NA2_N18 = np.round(100. * np.sum(np.isnan(cphN18) & np.isnan(cphCal0)) / np.sum(np.isnan(cty0)), 1)
+        cfree_cc4cl_and_calipso_NA2_MYD = np.round(100. * np.sum(np.isnan(cphMYD) & np.isnan(cphCal0)) / np.sum(np.isnan(cty0)), 1)
+        if collocateENV:
+            cfree_cc4cl_and_calipso_NA2_ENV = np.round(100. * np.sum(np.isnan(cphENV) & np.isnan(cphCal0)) / np.sum(np.isnan(cty0)), 1)
+            cfree_cc4cl_and_calipso_NA2 = np.round(np.mean([cfree_cc4cl_and_calipso_NA2_N18, cfree_cc4cl_and_calipso_NA2_MYD, cfree_cc4cl_and_calipso_NA2_ENV]), 1)
+        else:
+            cfree_cc4cl_and_calipso_NA2 = np.round(np.mean([cfree_cc4cl_and_calipso_NA2_N18, cfree_cc4cl_and_calipso_NA2_MYD]), 1)
         globals.latex_variables['cfree_cc4cl_and_calipso_NA2'] = cfree_cc4cl_and_calipso_NA2
+    """fraction of cloudy Calipso pixels that are also cloudy in CC4CL"""
+    if sceneTime == globals.NA2:
+        cloudy_cc4cl_and_calipso_NA2_N18 = np.round(100. * np.sum(~np.isnan(cphN18) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cty0)), 1)
+        cloudy_cc4cl_and_calipso_NA2_MYD = np.round(100. * np.sum(~np.isnan(cphMYD) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cty0)), 1)
+        if collocateENV:
+            cloudy_cc4cl_and_calipso_NA2_ENV = np.round(100. * np.sum(~np.isnan(cphENV) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cty0)), 1)
+            cloudy_cc4cl_and_calipso_NA2 = np.round(np.mean([cloudy_cc4cl_and_calipso_NA2_N18, cloudy_cc4cl_and_calipso_NA2_MYD, cloudy_cc4cl_and_calipso_NA2_ENV]), 1)
+        else:
+            cloudy_cc4cl_and_calipso_NA2 = np.round(np.mean([cloudy_cc4cl_and_calipso_NA2_N18, cloudy_cc4cl_and_calipso_NA2_MYD]), 1)
+        globals.latex_variables['cloudy_cc4cl_and_calipso_NA2'] = cloudy_cc4cl_and_calipso_NA2
 
+    """fraction of cloud free Calipso pixels"""
+    cfree_calipso = np.round(100. * np.sum(np.isnan(cphCal0)) / len(cphCal0), 1)
+    globals.latex_variables['cfree_calipso'] = cfree_calipso
     """fraction of cloudy Calipso pixels that are cloud-free in CC4CL"""
     cfree_N18 = 100. * np.sum(np.isnan(cphN18) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
     cfree_MYD = 100. * np.sum(np.isnan(cphMYD) & ~np.isnan(cphCal0)) / np.sum(~np.isnan(cphCal0))
@@ -1599,3 +1625,16 @@ def calculate_statistics(data, variable, platform):
 def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return array[idx]
+
+def ttest_significance_level(variable, p_value, sensors):
+    ttest_threshold_05 = 0.05
+    ttest_threshold_01 = 0.01
+    ttest_threshold_001 = 0.001
+    if ttest_threshold_05 > p_value > ttest_threshold_01:
+        print str(ttest_threshold_05) + " > " + variable + " ttest " + sensors + " > " + str(ttest_threshold_01) + ": " + str(p_value)
+    elif ttest_threshold_01 > p_value > ttest_threshold_001:
+        print str(ttest_threshold_01) + " > " + variable + " ttest " + sensors + " > " + str(ttest_threshold_001) + ": " + str(p_value)
+    elif p_value < ttest_threshold_001:
+        print variable + " ttest " + sensors + " < " + str(ttest_threshold_001) + ": " + str(p_value)
+    else:
+        print variable + " ttest " + sensors + " is > " + str(ttest_threshold_05) + ": " + str(p_value)
